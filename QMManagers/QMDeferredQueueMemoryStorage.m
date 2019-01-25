@@ -10,70 +10,81 @@
 
 @interface QMDeferredQueueMemoryStorage()
 
-@property (strong, nonatomic) NSMutableDictionary<NSString *, QBChatMessage *> *messagesInQueue;
+@property (strong, nonatomic) NSMutableDictionary *messagesInQueue;
+@property (strong, nonatomic) NSMutableDictionary *dialogs;
+@property (strong, nonatomic) NSMutableDictionary *contactRequests;
 
 @end
 
 @implementation QMDeferredQueueMemoryStorage
 
 - (void)dealloc {
-    
     [self.messagesInQueue removeAllObjects];
+    [self.dialogs removeAllObjects];
+    [self.contactRequests removeAllObjects];
 }
 
 - (instancetype)init {
     
     self = [super init];
-    
     if (self) {
-        _messagesInQueue = [NSMutableDictionary dictionary];
+        
+        self.dialogs = [NSMutableDictionary dictionary];
+        self.messagesInQueue = [NSMutableDictionary dictionary];
+        self.contactRequests = [NSMutableDictionary dictionary];
     }
-    
     return self;
 }
+
 
 - (void)addMessage:(QBChatMessage *)message {
     
     NSAssert(message != nil, @"Message is nil!");
     NSAssert(message.ID != nil, @"Messagewithout identifier!");
+    NSAssert(message.dateSent != nil, @"Message without dateSent!");
     
-//    QBChatMessage *localMessage = self.messagesInQueue[message.ID];
-//
-//    if (!localMessage) {
-       self.messagesInQueue[message.ID] = message;
-//    }
+    QBChatMessage *localMessage = self.messagesInQueue[message.ID];
+    
+    if (localMessage == nil) {
+
+        self.messagesInQueue[message.ID] = message;
+    }
+    else {
+        localMessage.dateSent = message.dateSent;
+    }
+    
 }
 
 - (void)removeMessage:(QBChatMessage *)message {
-    
     [self.messagesInQueue removeObjectForKey:message.ID];
 }
 
 - (BOOL)containsMessage:(QBChatMessage *)message {
-    
-    return self.messagesInQueue[message.ID] != nil;
+    return [self.messagesInQueue.allKeys containsObject:message.ID];
 }
 
-- (NSArray<QBChatMessage *> *)messages {
+- (NSArray *)messages {
     
     NSSortDescriptor *dateSentDescriptor = [NSSortDescriptor sortDescriptorWithKey:@"dateSent" ascending:YES];
     NSSortDescriptor *idDescriptor = [NSSortDescriptor sortDescriptorWithKey:@"ID" ascending:YES];
     
-    return [self sortedMessagesUsingDescriptors:@[dateSentDescriptor,idDescriptor]];
+    return [self messagesSortedWithDescriptors:@[dateSentDescriptor,idDescriptor]];
 }
 
-- (NSArray<QBChatMessage *> *)sortedMessagesUsingDescriptors:(NSArray <NSSortDescriptor *> *)descriptors {
+- (NSArray *)messagesSortedWithDescriptors:(NSArray *)descriptors {
     
     NSArray *sortedMessages = [self.messagesInQueue.allValues sortedArrayUsingDescriptors:descriptors];
     
     return sortedMessages;
 }
 
-//MARK: QMMemoryStorageProtocol
+
+#pragma mark - QMMemoryStorageProtocol
 
 - (void)free {
-    
     [self.messagesInQueue removeAllObjects];
+    [self.dialogs removeAllObjects];
+    [self.contactRequests removeAllObjects];
 }
 
 @end

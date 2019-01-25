@@ -14,8 +14,7 @@
 
 - (NSMutableDictionary *)context {
     
-    NSMutableDictionary *context =
-    objc_getAssociatedObject(self, @selector(context));
+    NSMutableDictionary *context = objc_getAssociatedObject(self, @selector(context));
     
     if (!context) {
         
@@ -28,8 +27,7 @@
 
 - (void)setContext:(NSMutableDictionary *)context {
     
-    objc_setAssociatedObject(self, @selector(context),
-                             context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(self, @selector(context), context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 - (void)synchronize {
@@ -49,7 +47,7 @@
                                           encoding:NSUTF8StringEncoding];
 }
 
-//MARK: - Private
+#pragma mark - Private
 
 - (NSMutableDictionary *)_jsonObject {
     

@@ -21,26 +21,22 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		58BBF3DF1CBFB55E00ECC291 /* QMUsersCacheModel.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 58BBF3DE1CBFB55E00ECC291 /* QMUsersCacheModel.bundle */; };
 		86E40FC61BDA3881002B0496 /* CDUser.m in Sources */ = {isa = PBXBuildFile; fileRef = 86E40FC51BDA3881002B0496 /* CDUser.m */; };
+		86E40FD81BDA4732002B0496 /* QMUsersModel.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 86E40FD61BDA4732002B0496 /* QMUsersModel.xcdatamodeld */; };
 		86E40FD91BDA4732002B0496 /* QMUsersModel.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 86E40FD61BDA4732002B0496 /* QMUsersModel.xcdatamodeld */; };
 		86E40FDD1BDA4851002B0496 /* _CDUser.m in Sources */ = {isa = PBXBuildFile; fileRef = 86E40FDC1BDA4851002B0496 /* _CDUser.m */; };
+		86F9CD651BDA28110021B6F0 /* QMUsersCache.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 86F9CD641BDA28110021B6F0 /* QMUsersCache.h */; };
 		86F9CD671BDA28110021B6F0 /* QMUsersCache.m in Sources */ = {isa = PBXBuildFile; fileRef = 86F9CD661BDA28110021B6F0 /* QMUsersCache.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		FB5D708D1EF177FE00E50084 /* PBXContainerItemProxy */ = {
+		86E40FD31BDA3957002B0496 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 86F9CD591BDA28110021B6F0 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 86E40FA51BDA32DF002B0496;
 			remoteInfo = QMUsersCacheMogenerator;
-		};
-		FB5D709F1EF18AAC00E50084 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 86F9CD591BDA28110021B6F0 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 86E40FB71BDA34D8002B0496;
-			remoteInfo = QMUsersCacheModel;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -51,6 +47,7 @@
 			dstPath = "include/$(PRODUCT_NAME)";
 			dstSubfolderSpec = 16;
 			files = (
+				86F9CD651BDA28110021B6F0 /* QMUsersCache.h in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -59,7 +56,8 @@
 /* Begin PBXFileReference section */
 		145C58FA1C99806B00740FF4 /* QMUsersModel2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = QMUsersModel2.xcdatamodel; sourceTree = "<group>"; };
 		28A9F32CF877B56314D17DE6 /* libPods-QMUsersCache.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-QMUsersCache.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		52F09D9E1C5267D70039258C /* Quickblox.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Quickblox.xcconfig; path = ../Quickblox.xcconfig; sourceTree = "<group>"; };
+		52F09D9E1C5267D70039258C /* Quickblox.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Quickblox.xcconfig; path = ../Quickblox.xcconfig; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.xcconfig; };
+		58BBF3DE1CBFB55E00ECC291 /* QMUsersCacheModel.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = QMUsersCacheModel.bundle; sourceTree = "<group>"; };
 		86E40FB81BDA34D8002B0496 /* QMUsersCacheModel.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QMUsersCacheModel.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		86E40FBA1BDA34D8002B0496 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		86E40FC41BDA3881002B0496 /* CDUser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CDUser.h; path = CoreData/Entries/CDUser.h; sourceTree = "<group>"; };
@@ -69,11 +67,10 @@
 		86E40FDB1BDA4851002B0496 /* _CDUser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = _CDUser.h; path = CoreData/EntriesMachine/_CDUser.h; sourceTree = "<group>"; };
 		86E40FDC1BDA4851002B0496 /* _CDUser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = _CDUser.m; path = CoreData/EntriesMachine/_CDUser.m; sourceTree = "<group>"; };
 		86E410231BDA5151002B0496 /* Bolts.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Bolts.framework; path = ../Frameworks/Bolts.framework; sourceTree = "<group>"; };
+		86E410251BDA522B002B0496 /* QMUsersCache-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "QMUsersCache-Prefix.pch"; sourceTree = "<group>"; };
 		86F9CD611BDA28110021B6F0 /* libQMUsersCache.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libQMUsersCache.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		86F9CD641BDA28110021B6F0 /* QMUsersCache.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QMUsersCache.h; sourceTree = "<group>"; };
 		86F9CD661BDA28110021B6F0 /* QMUsersCache.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = QMUsersCache.m; sourceTree = "<group>"; };
-		FB5D70901EF17B6B00E50084 /* QMUsersCacheModel.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = QMUsersCacheModel.bundle; sourceTree = SOURCE_ROOT; };
-		FB5D70961EF1897700E50084 /* QMUsersCache.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = QMUsersCache.h; sourceTree = "<group>"; };
-		FB805A4C1F051379000B3E9F /* QMUsersCache-Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "QMUsersCache-Prefix.pch"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -143,12 +140,12 @@
 		86F9CD581BDA28110021B6F0 = {
 			isa = PBXGroup;
 			children = (
-				FB805A4C1F051379000B3E9F /* QMUsersCache-Prefix.pch */,
 				52F09D9E1C5267D70039258C /* Quickblox.xcconfig */,
 				86F9CD631BDA28110021B6F0 /* QMUsersCache */,
 				86E40FB91BDA34D8002B0496 /* QMUsersCacheModel */,
 				86F9CD621BDA28110021B6F0 /* Products */,
 				18DBF0715DB68BFB9B4137F9 /* Frameworks */,
+				58BBF3DE1CBFB55E00ECC291 /* QMUsersCacheModel.bundle */,
 			);
 			sourceTree = "<group>";
 		};
@@ -164,10 +161,10 @@
 		86F9CD631BDA28110021B6F0 /* QMUsersCache */ = {
 			isa = PBXGroup;
 			children = (
-				FB5D70901EF17B6B00E50084 /* QMUsersCacheModel.bundle */,
-				FB5D70961EF1897700E50084 /* QMUsersCache.h */,
+				86F9CD641BDA28110021B6F0 /* QMUsersCache.h */,
 				86F9CD661BDA28110021B6F0 /* QMUsersCache.m */,
 				86E40FC71BDA3888002B0496 /* CoreData */,
+				86E410251BDA522B002B0496 /* QMUsersCache-Prefix.pch */,
 			);
 			path = QMUsersCache;
 			sourceTree = "<group>";
@@ -182,12 +179,13 @@
 				86E40FB41BDA34D8002B0496 /* Sources */,
 				86E40FB51BDA34D8002B0496 /* Frameworks */,
 				86E40FB61BDA34D8002B0496 /* Resources */,
+				86E40FDF1BDA49EB002B0496 /* Run Script */,
 				86E40FE01BDA49F7002B0496 /* ShellScript */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				FB5D708E1EF177FE00E50084 /* PBXTargetDependency */,
+				86E40FD41BDA3957002B0496 /* PBXTargetDependency */,
 			);
 			name = QMUsersCacheModel;
 			productName = QMUsersCacheModel;
@@ -205,7 +203,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				FB5D70A01EF18AAC00E50084 /* PBXTargetDependency */,
 			);
 			name = QMUsersCache;
 			productName = QMUsersCache;
@@ -218,7 +215,7 @@
 		86F9CD591BDA28110021B6F0 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0900;
+				LastUpgradeCheck = 0820;
 				ORGANIZATIONNAME = Quickblox;
 				TargetAttributes = {
 					86E40FA51BDA32DF002B0496 = {
@@ -256,6 +253,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				58BBF3DF1CBFB55E00ECC291 /* QMUsersCacheModel.bundle in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -272,7 +270,21 @@
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = "/bin/sh  ../Scripts/mogenerator.sh QMUsersModel";
+			shellPath = "/bin/sh  ../Scripts/mogenerator.sh QMUsersModelIncludes.h QMUsersModel.xcdatamodeld QMUsersCache";
+			shellScript = "";
+		};
+		86E40FDF1BDA49EB002B0496 /* Run Script */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Run Script";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = "/bin/sh  ../Scripts/mogenerator.sh QMUsersModelIncludes.h QMUsersModel.xcdatamodeld QMUsersCache";
 			shellScript = "";
 		};
 		86E40FE01BDA49F7002B0496 /* ShellScript */ = {
@@ -306,6 +318,7 @@
 			files = (
 				86F9CD671BDA28110021B6F0 /* QMUsersCache.m in Sources */,
 				86E40FDD1BDA4851002B0496 /* _CDUser.m in Sources */,
+				86E40FD81BDA4732002B0496 /* QMUsersModel.xcdatamodeld in Sources */,
 				86E40FC61BDA3881002B0496 /* CDUser.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -313,15 +326,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		FB5D708E1EF177FE00E50084 /* PBXTargetDependency */ = {
+		86E40FD41BDA3957002B0496 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 86E40FA51BDA32DF002B0496 /* QMUsersCacheMogenerator */;
-			targetProxy = FB5D708D1EF177FE00E50084 /* PBXContainerItemProxy */;
-		};
-		FB5D70A01EF18AAC00E50084 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 86E40FB71BDA34D8002B0496 /* QMUsersCacheModel */;
-			targetProxy = FB5D709F1EF18AAC00E50084 /* PBXContainerItemProxy */;
+			targetProxy = 86E40FD31BDA3957002B0496 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -348,8 +356,13 @@
 			buildSettings = {
 				INFOPLIST_FILE = QMUsersCacheModel/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				PRODUCT_BUNDLE_IDENTIFIER = com.quickblox.QMUsersCacheModel;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
+				VALID_ARCHS = "armv7s armv7 arm64";
 				WRAPPER_EXTENSION = bundle;
 			};
 			name = Debug;
@@ -361,8 +374,13 @@
 				COPY_PHASE_STRIP = YES;
 				INFOPLIST_FILE = QMUsersCacheModel/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				PRODUCT_BUNDLE_IDENTIFIER = com.quickblox.QMUsersCacheModel;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
+				VALID_ARCHS = "armv7s armv7 arm64";
 				WRAPPER_EXTENSION = bundle;
 			};
 			name = Release;
@@ -376,20 +394,14 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
@@ -427,20 +439,14 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
@@ -467,10 +473,11 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 52F09D9E1C5267D70039258C /* Quickblox.xcconfig */;
 			buildSettings = {
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "QMUsersCache-Prefix.pch";
+				GCC_PREFIX_HEADER = "QMUsersCache/QMUsersCache-Prefix.pch";
 				HEADER_SEARCH_PATHS = (
-					"\"../Frameworks\"/**",
+					"$(inherited)",
 					"$(SRCROOT)/../**",
 				);
 				OTHER_LDFLAGS = "$(inherited)";
@@ -483,10 +490,11 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 52F09D9E1C5267D70039258C /* Quickblox.xcconfig */;
 			buildSettings = {
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "QMUsersCache-Prefix.pch";
+				GCC_PREFIX_HEADER = "QMUsersCache/QMUsersCache-Prefix.pch";
 				HEADER_SEARCH_PATHS = (
-					"\"../Frameworks\"/**",
+					"$(inherited)",
 					"$(SRCROOT)/../**",
 				);
 				OTHER_LDFLAGS = "$(inherited)";

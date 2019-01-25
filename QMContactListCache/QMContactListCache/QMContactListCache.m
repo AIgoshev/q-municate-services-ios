@@ -7,7 +7,7 @@
 //
 
 #import "QMContactListCache.h"
-#import "QMContactListModelIncludes.h"
+#import "QMCLModelIncludes.h"
 #import "CDContactListItem.h"
 #import "CDUser.h"
 
@@ -75,7 +75,7 @@ static QMContactListCache *_contactListcCacheInstance = nil;
 
 - (void)insertOrUpdateContactListWithItems:(NSArray<QBContactListItem *> *)contactListItems
                                 completion:(dispatch_block_t)completion {
-
+    
     [self insertOrUpdateContactListWithItems:contactListItems completion:completion force:NO];
 }
 
@@ -151,7 +151,7 @@ static QMContactListCache *_contactListcCacheInstance = nil;
 - (void)contactListItems:(void(^)(NSArray<QBContactListItem *> *contactListItems))completion {
     
     [self performBackgroundQueue:^(NSManagedObjectContext *ctx) {
-
+        
         NSArray<QBContactListItem *> *result =
         [[CDContactListItem QM_findAllInContext:ctx] toQBContactListItems];
         
@@ -169,7 +169,7 @@ static QMContactListCache *_contactListcCacheInstance = nil;
         
         QBContactListItem *result =
         [[CDContactListItem QM_findFirstWithPredicate:IS(@"userID", @(userID))
-                                           inContext:ctx] toQBContactListItem];
+                                            inContext:ctx] toQBContactListItem];
         if (completion) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 completion(result);
@@ -177,5 +177,6 @@ static QMContactListCache *_contactListcCacheInstance = nil;
         }
     }];
 }
+
 
 @end

@@ -8,113 +8,68 @@
 
 #import "QMAuthService.h"
 
+#import "QMSLog.h"
+
 @implementation QMAuthService (Bolts)
 
 - (BFTask *)signUpAndLoginWithUser:(QBUUser *)user {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self signUpAndLoginWithUser:user completion:^(QBResponse *response, QBUUser *userProfile) {
         
-        [self signUpAndLoginWithUser:user
-                          completion:^(QBResponse *response,
-                                       QBUUser *userProfile)
-         {
-             response.success ?
-             [source setResult:userProfile] :
-             [source setError:response.error.error];
-         }];
-    });
+        response.success ? [source setResult:userProfile] : [source setError:response.error.error];
+    }];
+    
+    return source.task;
 }
 
 - (BFTask *)loginWithUser:(QBUUser *)user {
     
-    return make_task(^(BFTaskCompletionSource *source) {
-        
-        [self logInWithUser:user
-                 completion:^(QBResponse *response,
-                              QBUUser *userProfile)
-         {
-             response.success ?
-             [source setResult:userProfile] :
-             [source setError:response.error.error];
-         }];
-    });
-}
-
-- (BFTask<QBUUser *> *)logInWithFirebaseProjectID:(NSString *)projectID
-                                      accessToken:(NSString *)accessToken {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    [self logInWithUser:user completion:^(QBResponse *response, QBUUser *userProfile) {
         
-        [self logInWithFirebaseProjectID:projectID
-                             accessToken:accessToken
-                              completion:^(QBResponse *response,
-                                           QBUUser *userProfile)
-         {
-             response.success ?
-             [source setResult:userProfile] :
-             [source setError:response.error.error];
-         }];
-    });
-}
-
-- (BFTask *)loginWithTwitterDigitsAuthHeaders:(NSDictionary *)authHeaders {
+        response.success ? [source setResult:userProfile] : [source setError:response.error.error];
+    }];
     
-    return make_task(^(BFTaskCompletionSource *source) {
-        
-        [self loginWithTwitterDigitsAuthHeaders:authHeaders
-                                     completion:^(QBResponse *response,
-                                                  QBUUser *userProfile)
-         {
-             response.success ?
-             [source setResult:userProfile] :
-             [source setError:response.error.error];
-         }];
-    });
+    return source.task;
 }
 
 - (BFTask *)loginWithFacebookSessionToken:(NSString *)sessionToken {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self logInWithFacebookSessionToken:sessionToken completion:^(QBResponse *response, QBUUser *userProfile) {
         
-        [self logInWithFacebookSessionToken:sessionToken
-                                 completion:^(QBResponse *response,
-                                              QBUUser *userProfile)
-         {
-             response.success ?
-             [source setResult:userProfile] :
-             [source setError:response.error.error];
-         }];
-    });
+        response.success ? [source setResult:userProfile] : [source setError:response.error.error];
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)loginWithTwitterAccessToken:(NSString *)accessToken
-                      accessTokenSecret:(NSString *)accessTokenSecret {
+- (BFTask *)loginWithTwitterAccessToken:(NSString *)accessToken accessTokenSecret:(NSString *)accessTokenSecret {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self loginWithTwitterAccessToken:accessToken accessTokenSecret:accessTokenSecret completion:^(QBResponse *response, QBUUser *userProfile) {
         
-        [self loginWithTwitterAccessToken:accessToken
-                        accessTokenSecret:accessTokenSecret
-                               completion:^(QBResponse *response,
-                                            QBUUser *userProfile)
-         {
-             response.success ?
-             [source setResult:userProfile] :
-             [source setError:response.error.error];
-         }];
-    });
+        response.success ? [source setResult:userProfile] : [source setError:response.error.error];
+    }];
+    
+    return source.task;
 }
 
 - (BFTask *)logout {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self logOut:^(QBResponse *response) {
         
-        [self logOut:^(QBResponse *response) {
-            
-             response.success ?
-             [source setResult:nil] :
-             [source setError:response.error.error];
-         }];
-    });
+        response.success ? [source setResult:nil] : [source setError:response.error.error];
+    }];
+    
+    return source.task;
 }
 
 @end

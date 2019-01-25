@@ -1,5 +1,4 @@
 #import "CDContactListItem.h"
-#import "QMSLog.h"
 
 @implementation CDContactListItem
 
@@ -15,19 +14,19 @@
 
 - (void)updateWithQBContactListItem:(QBContactListItem *)contactListItem {
     
-    if (self.subscriptionStateValue != contactListItem.subscriptionState) {
-        self.subscriptionStateValue = contactListItem.subscriptionState;
-    }
+    self.userID = @(contactListItem.userID);
+    self.subscriptionState = @(contactListItem.subscriptionState);
+}
+
+- (BOOL)isEqualQBContactListItem:(QBContactListItem *)other {
     
-    if (self.userIDValue != contactListItem.userID) {
-        self.userIDValue = (int32_t)contactListItem.userID;
+    if (self.userID.integerValue != other.userID) {
+        return NO;
     }
-    
-    if (!self.changedValues.count) {
-        [self.managedObjectContext refreshObject:self mergeChanges:NO];
-    }
-    else if (!self.isInserted){
-        QMSLog(@"Cache > %tu > %@: %@", self.class, self.userID ,self.changedValues);
+    else if (self.subscriptionState.integerValue != other.subscriptionState) {
+        return NO;
+    }else {
+        return YES;
     }
 }
 
@@ -49,6 +48,5 @@
     return [contactListItems copy];
     
 }
-
 
 @end

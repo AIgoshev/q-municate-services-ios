@@ -18,16 +18,6 @@ typedef NS_ENUM(NSUInteger, QMMessageType) {
     QMMessageTypeDeleteContactRequest
 };
 
-typedef NS_ENUM(NSUInteger, QMDialogUpdateType) {
-    QMDialogUpdateTypeNone      = 0,
-    QMDialogUpdateTypePhoto     = 1,
-    QMDialogUpdateTypeName      = 2,
-    QMDialogUpdateTypeOccupants = 3
-};
-
-/**
- The current status of the attachment message.
- */
 typedef NS_ENUM(NSUInteger, QMMessageAttachmentStatus) {
     /** Default attachment state. Attachment has no active processes */
     QMMessageAttachmentStatusNotLoaded = 0,
@@ -41,4 +31,11 @@ typedef NS_ENUM(NSUInteger, QMMessageAttachmentStatus) {
     QMMessageAttachmentStatusLoaded,
     /** The attachment process failed because of an error. */
     QMMessageAttachmentStatusError
+};
+
+typedef NS_ENUM(NSUInteger, QMDialogUpdateType) {
+    QMDialogUpdateTypeNone      = 0,
+    QMDialogUpdateTypePhoto     = 1,
+    QMDialogUpdateTypeName      = 2,
+    QMDialogUpdateTypeOccupants = 3
 };

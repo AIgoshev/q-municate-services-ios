@@ -35,7 +35,7 @@ typedef void(^QMCacheCollection)(NSArray * _Nullable collection);
 /**
  *  Init with service data delegate and contact list cache protocol.
  *
- *  @param serviceManager instance confirmed id<QMServiceDataDelegate> protocol
+ *  @param serviceDataDelegate instance confirmed id<QMServiceDataDelegate> protocol
  *  @param cacheDataSource       instance confirmed id<QMContactListServiceCacheDataSource> protocol
  *
  *  @return QMContactListService instance
@@ -91,7 +91,7 @@ typedef void(^QMCacheCollection)(NSArray * _Nullable collection);
 
 @end
 
-//MARK: - Bolts
+#pragma mark - Bolts
 
 /**
  *  Bolts methods for QMContactListService
@@ -144,7 +144,7 @@ typedef void(^QMCacheCollection)(NSArray * _Nullable collection);
 
 @end
 
-//MARK: - Protocols
+#pragma mark - Protocols
 
 /**
  *  Data source for QMContactList Service

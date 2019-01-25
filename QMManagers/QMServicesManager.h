@@ -44,7 +44,7 @@ QMUsersServiceDelegate
 /**
  *  Determines whether extended services logging is enabled.
  *
- *  @param flag whether logs should be enabled or not
+ *  @param enable whether logs should be enabled or not
  *
  *  @discussion By default logs are enabled.
  *

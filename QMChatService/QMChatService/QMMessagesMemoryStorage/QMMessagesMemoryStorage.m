@@ -20,12 +20,13 @@
     
     self = [super init];
     if (self) {
-        _datasources = [NSMutableDictionary dictionary];
+        
+        self.datasources = [NSMutableDictionary dictionary];
     }
     return self;
 }
 
-//MARK: - Setters
+#pragma mark - Setters
 
 - (void)addMessage:(QBChatMessage *)message forDialogID:(NSString *)dialogID {
     
@@ -66,7 +67,7 @@
     return [messages lastObject];
 }
 
-//MARK: - replace
+#pragma mark - replace
 
 - (void)replaceMessages:(NSArray *)messages forDialogID:(NSString *)dialogID {
     
@@ -77,7 +78,7 @@
     [self sortMessagesForDialogID:dialogID];
 }
 
-//MARK: - Getters
+#pragma mark - Getters
 
 - (NSMutableOrderedSet *)dataSourceWithDialogID:(NSString *)dialogID {
     
@@ -177,15 +178,11 @@
     return [messages containsObject:message];
 }
 
-//MARK: - QMMemoryStorageProtocol
+#pragma mark - QMMemeoryStorageProtocol
 
 - (void)free {
     
     [self.datasources removeAllObjects];
-}
-
-- (BOOL)isEmpty {
-    return self.datasources.count == 0;
 }
 
 @end

@@ -10,77 +10,64 @@
 
 @interface QMContactListMemoryStorage()
 
-@property (strong, nonatomic) NSMutableDictionary *contactsMemoryStorage;
+@property (strong, nonatomic) NSMutableDictionary *contactList;
 
 @end
 
 @implementation QMContactListMemoryStorage
-
-// MARK: Construction
 
 - (instancetype)init {
     
     self = [super init];
     if (self) {
         
-        self.contactsMemoryStorage = [NSMutableDictionary dictionary];
+        self.contactList = [NSMutableDictionary dictionary];
     }
     
     return self;
 }
 
-// MARK: Public
-
 - (void)updateWithContactList:(QBContactList *)contactList {
     
-    [self.contactsMemoryStorage removeAllObjects];
-
-    [contactList.contacts enumerateObjectsUsingBlock:^(QBContactListItem *contactListItem,
-                                                       NSUInteger idx,
-                                                       BOOL *stop) {
-        
-        self.contactsMemoryStorage[@(contactListItem.userID)] = contactListItem;
+    [self.contactList removeAllObjects];
+    
+    [contactList.contacts enumerateObjectsUsingBlock:^(QBContactListItem *contactListItem, NSUInteger idx, BOOL *stop) {
+        self.contactList[@(contactListItem.userID)] = contactListItem;
     }];
     
-    [contactList.pendingApproval enumerateObjectsUsingBlock:^(QBContactListItem *contactListItem,
-                                                              NSUInteger idx,
-                                                              BOOL *stop) {
-        
-        self.contactsMemoryStorage[@(contactListItem.userID)] = contactListItem;
+    [contactList.pendingApproval enumerateObjectsUsingBlock:^(QBContactListItem *contactListItem, NSUInteger idx, BOOL *stop) {
+        self.contactList[@(contactListItem.userID)] = contactListItem;
     }];
 }
 
 - (void)updateWithContactListItems:(NSArray *)contactListItems {
     
-    [self.contactsMemoryStorage removeAllObjects];
-    [contactListItems enumerateObjectsUsingBlock:^(QBContactListItem *contactListItem,
-                                                   NSUInteger idx,
-                                                   BOOL *stop) {
-        
-        self.contactsMemoryStorage[@(contactListItem.userID)] = contactListItem;
+    [self.contactList removeAllObjects];
+    [contactListItems enumerateObjectsUsingBlock:^(QBContactListItem *contactListItem, NSUInteger idx, BOOL *stop) {
+        self.contactList[@(contactListItem.userID)] = contactListItem;
     }];
 }
 
 - (QBContactListItem *)contactListItemWithUserID:(NSUInteger)userID {
     
-    return self.contactsMemoryStorage[@(userID)];
+    return self.contactList[@(userID)];
 }
 
 - (NSArray *)userIDsFromContactList {
     
-    return self.contactsMemoryStorage.allKeys;
+    return self.contactList.allKeys;
 }
 
 - (NSArray *)allContactListItems {
     
-    return self.contactsMemoryStorage.allValues;
+    return self.contactList.allValues;
 }
 
-// MARK: QMMemoryStorageProtocol
+#pragma mark - QMMemoryStorageProtocol
 
 - (void)free {
     
-    [self.contactsMemoryStorage removeAllObjects];
+    [self.contactList removeAllObjects];
 }
 
 @end

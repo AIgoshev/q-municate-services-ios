@@ -12,20 +12,25 @@
 
 #import "QMDBStorage.h"
 #import "QMChatCache.h"
-#import "QMUsersCache.h"
+#import "QMContactListCache.h"
 #import "QMOpenGraphCache.h"
 #import "QMContactListCache.h"
+#import "QMUsersCache.h"
 
-#import "QMContactListService.h"
 #import "QMChatService.h"
 #import "QMAuthService.h"
-#import "QMUsersService.h"
 
-#import "QBChatMessage+QMCustomParameters.h"
 #import "QBChatAttachment+QMCustomData.h"
-#import "QBChatAttachment+QMFactory.h"
-#import "QBChatAttachment+QMCustomParameters.h"
+
 #import "QMUsersMemoryStorage.h"
 #import "QMContactListMemoryStorage.h"
 #import "QMMessagesMemoryStorage.h"
-#import "QMAsynchronousOperation.h"
+
+#import "QMUsersCache.h"
+#import "QMUsersService.h"
+
+#import "QMServicesManager.h"
+#import "QMContactListService.h"
+#import "QBChatAttachment+QMFactory.h"
+#import "QBChatAttachment+QMCustomParameters.h"
+#import "QBChatMessage+QMCustomParameters.h"

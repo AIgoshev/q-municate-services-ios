@@ -24,7 +24,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property (assign, nonatomic) QMMessageAttachmentStatus attachmentStatus;
 @property (assign, nonatomic) CLLocationCoordinate2D locationCoordinate;
 
-
 /**
  *  Dialog
  */
@@ -97,7 +96,6 @@ NS_ASSUME_NONNULL_BEGIN
  *  Return `YES` if this item is a image attachment, and `NO` if it is a text message.
  */
 - (BOOL)isImageAttachment;
-
 
 @end
 

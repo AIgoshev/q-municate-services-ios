@@ -16,7 +16,7 @@ static NSString *const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
 @interface QMChatService()
 
-//@property (assign, nonatomic, readwrite) QMChatConnectionState chatConnectionState;
+@property (assign, nonatomic, readwrite) QMChatConnectionState chatConnectionState;
 @property (strong, nonatomic) QBMulticastDelegate <QMChatServiceDelegate, QMChatConnectionDelegate> *multicastDelegate;
 @property (weak, nonatomic) BFTask* loadEarlierMessagesTask;
 @property (strong, nonatomic) NSMutableDictionary *loadedAllMessages;
@@ -25,6 +25,8 @@ static NSString *const kQMChatServiceDomain = @"com.q-municate.chatservice";
 @end
 
 @implementation QMChatService (Bolts)
+
+#pragma mark - Chat connection
 
 //MARK: - Chat connection
 
@@ -93,404 +95,325 @@ static NSString *const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
 - (BFTask *)disconnect {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self disconnectWithCompletionBlock:^(NSError *error) {
         
-        [self disconnectWithCompletionBlock:^(NSError *error) {
+        if (error != nil) {
             
-            if (error != nil) {
-                
-                [source setError:error];
-            }
-            else {
-                
-                [source setResult:nil];
-            }
-        }];
-    });
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
-//MARK: - Chat dialog handling
+#pragma mark - chat dialog handling
 
 - (BFTask *)joinToGroupDialog:(QBChatDialog *)dialog {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self joinToGroupDialog:dialog completion:^(NSError *error) {
         
-        [self joinToGroupDialog:dialog completion:^(NSError *error) {
+        if (error != nil) {
             
-            if (error != nil) {
-                [source setError:error];
-            }
-            else {
-                [source setResult:nil];
-            }
-        }];
-    });
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
 - (BFTask *)allDialogsWithPageLimit:(NSUInteger)limit
                     extendedRequest:(NSDictionary *)extendedRequest
-                     iterationBlock:(void(^)(
-                                             QBResponse *response,
-                                             NSArray<QBChatDialog *> *dialogObjects,
-                                             NSSet<NSNumber *> *dialogsUsersIDs,
-                                             BOOL *stop))iterationBlock {
+                     iterationBlock:(void(^)(QBResponse *response, NSArray *dialogObjects, NSSet *dialogsUsersIDs, BOOL *stop))iterationBlock {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self allDialogsWithPageLimit:limit extendedRequest:extendedRequest iterationBlock:iterationBlock completion:^(QBResponse *response) {
         
-        [self allDialogsWithPageLimit:limit
-                      extendedRequest:extendedRequest
-                       iterationBlock:iterationBlock
-                           completion:^(QBResponse *response)
-         {
-             if (response.success) {
-                 
-                 [source setResult:nil];
-             }
-             else {
-                 
-                 [source setError:response.error.error];
-             }
-         }];
-    });
+        if (response.success) {
+            
+            [source setResult:nil];
+        }
+        else {
+            
+            [source setError:response.error.error];
+        }
+    }];
+    
+    return source.task;
 }
 
-//MARK: Chat dialog creation
+#pragma mark Chat dialog creation
 
 - (BFTask *)createPrivateChatDialogWithOpponent:(QBUUser *)opponent {
     
     return [self createPrivateChatDialogWithOpponentID:opponent.ID];
 }
 
-- (BFTask *)createGroupChatDialogWithName:(NSString *)name
-                                    photo:(NSString *)photo
-                                occupants:(NSArray *)occupants {
+- (BFTask *)createGroupChatDialogWithName:(NSString *)name photo:(NSString *)photo occupants:(NSArray *)occupants {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self createGroupChatDialogWithName:name photo:photo occupants:occupants completion:^(QBResponse *response, QBChatDialog *createdDialog) {
         
-        [self createGroupChatDialogWithName:name
-                                      photo:photo
-                                  occupants:occupants
-                                 completion:^(QBResponse *response,
-                                              QBChatDialog *createdDialog)
-         {
-             if (response.success) {
-                 
-                 [source setResult:createdDialog];
-             }
-             else {
-                 
-                 [source setError:response.error.error];
-             }
-         }];
-    });
+        if (response.success) {
+            
+            [source setResult:createdDialog];
+        }
+        else {
+            
+            [source setError:response.error.error];
+        }
+    }];
+    
+    return source.task;
 }
 
 - (BFTask *)createPrivateChatDialogWithOpponentID:(NSUInteger)opponentID {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self createPrivateChatDialogWithOpponentID:opponentID completion:^(QBResponse *response, QBChatDialog *createdDialog) {
         
-        [self createPrivateChatDialogWithOpponentID:opponentID
-                                         completion:^(QBResponse *response,
-                                                      QBChatDialog *createdDialog)
-         {
-             if (createdDialog) {
-                 [source setResult:createdDialog];
-             }
-             else if (response.error) {
-                 [source setError:response.error.error];
-             }
-             else {
-                 
-                 NSError *error =
-                 [[NSError alloc] initWithDomain:kQMChatServiceDomain
-                                            code:-10001
-                                        userInfo:@
-                  {
-                      NSLocalizedRecoverySuggestionErrorKey :
-                      @"Create private chat - error"
-                  }];
-                 
-                 [source setError:error];
-                 
-             }
-         }];
-    });
+        if (createdDialog != nil) {
+            
+            [source setResult:createdDialog];
+        }
+        else if (response.error != nil) {
+            
+            [source setError:response.error.error];
+        }
+        else {
+            
+            NSAssert(nil, @"Need to update this case");
+        }
+    }];
+    
+    return source.task;
 }
 
-//MARK: - Edit dialog methods
+#pragma mark - Edit dialog methods
 
-- (BFTask *)changeDialogName:(NSString *)dialogName
-               forChatDialog:(QBChatDialog *)chatDialog {
+- (BFTask *)changeDialogName:(NSString *)dialogName forChatDialog:(QBChatDialog *)chatDialog {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self changeDialogName:dialogName forChatDialog:chatDialog completion:^(QBResponse *response, QBChatDialog *updatedDialog) {
         
-        [self changeDialogName:dialogName
-                 forChatDialog:chatDialog
-                    completion:^(QBResponse *response,
-                                 QBChatDialog *updatedDialog)
-         {
-             if (response.success) {
-                 [source setResult:updatedDialog];
-             }
-             else {
-                 [source setError:response.error.error];
-             }
-         }];
-    });
+        if (response.success) {
+            
+            [source setResult:updatedDialog];
+        }
+        else {
+            
+            [source setError:response.error.error];
+        }
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)changeDialogAvatar:(NSString *)avatarPublicUrl
-                 forChatDialog:(QBChatDialog *)chatDialog {
+- (BFTask *)changeDialogAvatar:(NSString *)avatarPublicUrl forChatDialog:(QBChatDialog *)chatDialog {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self changeDialogAvatar:avatarPublicUrl forChatDialog:chatDialog completion:^(QBResponse *response, QBChatDialog *updatedDialog) {
         
-        [self changeDialogAvatar:avatarPublicUrl
-                   forChatDialog:chatDialog
-                      completion:^(QBResponse *response,
-                                   QBChatDialog *updatedDialog)
-         {
-             if (response.success) {
-                 [source setResult:updatedDialog];
-             }
-             else {
-                 [source setError:response.error.error];
-             }
-         }];
-    });
+        if (response.success) {
+            
+            [source setResult:updatedDialog];
+        }
+        else {
+            
+            [source setError:response.error.error];
+        }
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)joinOccupantsWithIDs:(NSArray *)ids
-                    toChatDialog:(QBChatDialog *)chatDialog {
+- (BFTask *)joinOccupantsWithIDs:(NSArray *)ids toChatDialog:(QBChatDialog *)chatDialog {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self joinOccupantsWithIDs:ids toChatDialog:chatDialog completion:^(QBResponse *response, QBChatDialog *updatedDialog) {
         
-        [self joinOccupantsWithIDs:ids
-                      toChatDialog:chatDialog
-                        completion:^(QBResponse *response,
-                                     QBChatDialog *updatedDialog)
-         {
-             if (response.success) {
-                 [source setResult:updatedDialog];
-             }
-             else {
-                 [source setError:response.error.error];
-             }
-         }];
-    });
+        if (response.success) {
+            
+            [source setResult:updatedDialog];
+        }
+        else {
+            
+            [source setError:response.error.error];
+        }
+    }];
+    
+    return source.task;
 }
 
 - (BFTask *)deleteDialogWithID:(NSString *)dialogID {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self deleteDialogWithID:dialogID completion:^(QBResponse *response) {
         
-        [self deleteDialogWithID:dialogID
-                      completion:^(QBResponse *response)
-         {
-             if (response.success) {
-                 [source setResult:nil];
-             }
-             else {
-                 [source setError:response.error.error];
-             }
-         }];
-    });
+        if (response.success) {
+            
+            [source setResult:nil];
+        }
+        else {
+            
+            [source setError:response.error.error];
+        }
+    }];
+    
+    return source.task;
 }
 
-//MARK: Messages loading
+#pragma mark Messages loading
 
 - (BFTask *)messagesWithChatDialogID:(NSString *)chatDialogID {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource *source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self messagesWithChatDialogID:chatDialogID completion:^(QBResponse *response, NSArray *messages) {
         
-        [self messagesWithChatDialogID:chatDialogID
-                            completion:^(QBResponse *response,
-                                         NSArray<QBChatMessage *> *messages)
-         {
-             if (response.success) {
-                 [source setResult:messages];
-             }
-             else {
-                 [source setError:response.error.error];
-             }
-         }];
-    });
+        if (response.success) {
+            
+            [source setResult:messages];
+        }
+        else {
+            
+            [source setError:response.error.error];
+        }
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)messagesWithChatDialogID:(NSString *)chatDialogID
-                     extendedRequest:(NSDictionary *)extendedParameters {
+- (BFTask *)messagesWithChatDialogID:(NSString *)chatDialogID extendedRequest:(NSDictionary *)extendedParameters {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource *source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self messagesWithChatDialogID:chatDialogID extendedRequest:extendedParameters completion:^(QBResponse *response, NSArray *messages) {
         
-        [self messagesWithChatDialogID:chatDialogID
-                       extendedRequest:extendedParameters
-                            completion:^(QBResponse *response,
-                                         NSArray<QBChatMessage *> *messages)
-         {
-             if (response.success) {
-                 [source setResult:messages];
-             }
-             else {
-                 [source setError:response.error.error];
-             }
-         }];
-    });
+        if (response.success) {
+            
+            [source setResult:messages];
+        }
+        else {
+            
+            [source setError:response.error.error];
+        }
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)messagesWithChatDialogID:(NSString *)chatDialogID
-                      iterationBlock:(void (^)(QBResponse *response,
-                                               NSArray *messages,
-                                               BOOL *stop))iterationBlock {
+- (BFTask *)messagesWithChatDialogID:(NSString *)chatDialogID iterationBlock:(void (^)(QBResponse *response, NSArray *messages, BOOL *stop))iterationBlock {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource *source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self messagesWithChatDialogID:chatDialogID iterationBlock:iterationBlock completion:^(QBResponse *response, NSArray *messages) {
         
-        [self messagesWithChatDialogID:chatDialogID
-                        iterationBlock:iterationBlock
-                            completion:^(QBResponse *response, NSArray *messages)
-         {
-             if (response.success) {
-                 [source setResult:messages];
-             }
-             else {
-                 [source setError:response.error.error];
-             }
-         }];
-    });
+        if (response.success) {
+            
+            [source setResult:messages];
+        }
+        else {
+            
+            [source setError:response.error.error];
+        }
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)messagesWithChatDialogID:(NSString *)chatDialogID
-                     extendedRequest:(NSDictionary *)extendedParameters
-                      iterationBlock:(void (^)(QBResponse *response,
-                                               NSArray *messages,
-                                               BOOL *stop))iterationBlock {
+- (BFTask *)messagesWithChatDialogID:(NSString *)chatDialogID extendedRequest:(NSDictionary *)extendedParameters iterationBlock:(void (^)(QBResponse *response, NSArray *messages, BOOL *stop))iterationBlock {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource *source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self messagesWithChatDialogID:chatDialogID extendedRequest:extendedParameters iterationBlock:iterationBlock completion:^(QBResponse *response, NSArray *messages) {
         
-        [self messagesWithChatDialogID:chatDialogID
-                       extendedRequest:extendedParameters
-                        iterationBlock:iterationBlock
-                            completion:^(QBResponse *response, NSArray *messages)
-         {
-             if (response.success) {
-                 [source setResult:messages];
-             }
-             else {
-                 [source setError:response.error.error];
-             }
-         }];
-    });
+        if (response.success) {
+            
+            [source setResult:messages];
+        }
+        else {
+            
+            [source setError:response.error.error];
+        }
+    }];
+    
+    return source.task;
 }
 
 - (BFTask *)loadEarlierMessagesWithChatDialogID:(NSString *)chatDialogID {
     
-    if ([self.loadedAllMessages[chatDialogID] isEqualToNumber:kQMLoadedAllMessages]) {
-        return [BFTask taskWithResult:@[]];
-    }
+    if ([self.loadedAllMessages[chatDialogID] isEqualToNumber: kQMLoadedAllMessages]) return [BFTask taskWithResult:@[]];
     
     if (self.loadEarlierMessagesTask == nil) {
-        
         BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
         
         QBChatMessage *oldestMessage = [self.messagesMemoryStorage oldestMessageForDialogID:chatDialogID];
         
-        if (oldestMessage == nil) {
-            return [BFTask taskWithResult:@[]];
-        }
+        if (oldestMessage == nil) return [BFTask taskWithResult:@[]];
         
         NSString *oldestMessageDate = [NSString stringWithFormat:@"%tu", (NSUInteger)[oldestMessage.dateSent timeIntervalSince1970]];
         
         QBResponsePage *page = [QBResponsePage responsePageWithLimit:self.chatMessagesPerPage];
         
-        NSDictionary *parameters = @{
+        NSDictionary* parameters = @{
                                      @"date_sent[lte]" : oldestMessageDate,
                                      @"sort_desc" : @"date_sent",
                                      @"_id[lt]" : oldestMessage.ID,
                                      };
         
-        [QBRequest messagesWithDialogID:chatDialogID
-                        extendedRequest:parameters
-                                forPage:page
-                           successBlock:^(QBResponse *response,
-                                          NSArray *messages,
-                                          QBResponsePage *page)
-         {
-             if ([messages count] < self.chatMessagesPerPage) {
-                 
-                 self.loadedAllMessages[chatDialogID] = kQMLoadedAllMessages;
-             }
-             
-             if ([messages count] > 0) {
-                 
-                 [self.messagesMemoryStorage addMessages:messages
-                                             forDialogID:chatDialogID];
-                 
-                 if ([self.multicastDelegate
-                      respondsToSelector:@selector(chatService:
-                                                   didAddMessagesToMemoryStorage:
-                                                   forDialogID:)]) {
-                          
-                          [self.multicastDelegate chatService:self
-                                didAddMessagesToMemoryStorage:messages
-                                                  forDialogID:chatDialogID];
-                      }
-             }
-             
-             [source setResult:[[messages reverseObjectEnumerator] allObjects]];
-             
-         } errorBlock:^(QBResponse *response) {
-             // case where we may have deleted dialog from another device
-             if (response.status != QBResponseStatusCodeNotFound) {
-                 [self.serviceManager handleErrorResponse:response];
-             }
-             
-             [source setError:response.error.error];
-         }];
+        
+        __weak __typeof(self)weakSelf = self;
+        [QBRequest messagesWithDialogID:chatDialogID extendedRequest:parameters forPage:page successBlock:^(QBResponse *response, NSArray *messages, QBResponsePage *page) {
+            __typeof(weakSelf)strongSelf = weakSelf;
+            
+            if ([messages count] < strongSelf.chatMessagesPerPage) {
+                
+                strongSelf.loadedAllMessages[chatDialogID] = kQMLoadedAllMessages;
+            }
+            
+            if ([messages count] > 0) {
+                
+                [strongSelf.messagesMemoryStorage addMessages:messages forDialogID:chatDialogID];
+                
+                if ([strongSelf.multicastDelegate respondsToSelector:@selector(chatService:didAddMessagesToMemoryStorage:forDialogID:)]) {
+                    [strongSelf.multicastDelegate chatService:strongSelf didAddMessagesToMemoryStorage:messages forDialogID:chatDialogID];
+                }
+            }
+            
+            [source setResult:[[messages reverseObjectEnumerator] allObjects]];
+            
+        } errorBlock:^(QBResponse *response) {
+            
+            // case where we may have deleted dialog from another device
+            if(response.status != QBResponseStatusCodeNotFound) {
+                
+                [weakSelf.serviceManager handleErrorResponse:response];
+            }
+            
+            [source setError:response.error.error];
+        }];
         
         self.loadEarlierMessagesTask = source.task;
         return self.loadEarlierMessagesTask;
-    }
-    
-    return [BFTask taskWithResult:@[]];
-}
-
-
-- (BFTask<NSArray<QBChatDialog *>*> *)syncLaterDialogsWithCacheFromDate:(NSDate *)date {
-    
-    if (date &&
-        [self.cacheDataSource respondsToSelector:@selector(cachedDialogsWithPredicate:
-                                                           block:)]) {
-        
-        __weak __typeof(self)weakSelf = self;
-        return make_task(^(BFTaskCompletionSource * _Nonnull source) {
-            
-            [self.cacheDataSource cachedDialogsWithPredicate:qm_laterDialogsPredicate(date)
-                                                       block:^(NSArray * _Nullable collection)
-             {
-                 dispatch_async(dispatch_get_main_queue(), ^{
-                     
-                     if (collection.count > 0) {
-                         
-                         [weakSelf.dialogsMemoryStorage addChatDialogs:collection
-                                                               andJoin:NO];
-                         
-                         NSMutableSet *dialogsUsersIDs = [NSMutableSet set];
-                         
-                         for (QBChatDialog *dialog in collection) {
-                             [dialogsUsersIDs addObjectsFromArray:dialog.occupantIDs];
-                         }
-                         
-                         if ([weakSelf.multicastDelegate respondsToSelector:@selector(chatService:
-                                                                                      didLoadChatDialogsFromCache:
-                                                                                      withUsers:)]) {
-                             [weakSelf.multicastDelegate chatService:weakSelf
-                                         didLoadChatDialogsFromCache:collection
-                                                           withUsers:dialogsUsersIDs.copy];
-                         }
-                     }
-                     
-                     [source setResult:collection];
-                 });
-             }];
-        });
     }
     
     return [BFTask taskWithResult:@[]];
@@ -536,390 +459,388 @@ static NSString *const kQMChatServiceDomain = @"com.q-municate.chatservice";
     }
 }
 
-//MARK: - chat dialog fetching
+- (BFTask<NSArray<QBChatDialog *>*> *)syncLaterDialogsWithCacheFromDate:(NSDate *)date {
+    
+    if (date &&
+        [self.cacheDataSource respondsToSelector:@selector(cachedDialogsWithPredicate:
+                                                           block:)]) {
+        
+        __weak __typeof(self)weakSelf = self;
+        return make_task(^(BFTaskCompletionSource * _Nonnull source) {
+            
+            [self.cacheDataSource cachedDialogsWithPredicate:qm_laterDialogsPredicate(date)
+                                                       block:^(NSArray * _Nullable collection)
+             {
+                 dispatch_async(dispatch_get_main_queue(), ^{
+                     
+                     if (collection.count > 0) {
+                         
+                         [weakSelf.dialogsMemoryStorage addChatDialogs:collection
+                                                               andJoin:NO];
+                         
+                         NSMutableSet *dialogsUsersIDs = [NSMutableSet set];
+                         
+                         for (QBChatDialog *dialog in collection) {
+                             [dialogsUsersIDs addObjectsFromArray:dialog.occupantIDs];
+                         }
+                         
+                         if ([weakSelf.multicastDelegate respondsToSelector:@selector(chatService:
+                                                                                      didLoadChatDialogsFromCache:
+                                                                                      withUsers:)]) {
+                             [weakSelf.multicastDelegate chatService:weakSelf
+                                         didLoadChatDialogsFromCache:collection
+                                                           withUsers:dialogsUsersIDs.copy];
+                         }
+                     }
+                     
+                     [source setResult:collection];
+                 });
+             }];
+        });
+    }
+    
+    return [BFTask taskWithResult:@[]];
+}
+
+
+#pragma mark - chat dialog fetching
 
 - (BFTask *)fetchDialogWithID:(NSString *)dialogID {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self fetchDialogWithID:dialogID completion:^(QBChatDialog *dialog) {
         
-        [self fetchDialogWithID:dialogID
-                     completion:^(QBChatDialog *dialog)
-         {
-             [source setResult:dialog];
-         }];
-    });
+        [source setResult:dialog];
+    }];
+    
+    return source.task;
 }
-
 
 - (BFTask *)loadDialogWithID:(NSString *)dialogID {
     
     QBResponsePage *responsePage = [QBResponsePage responsePageWithLimit:1 skip:0];
-    NSMutableDictionary *extendedRequest = [NSMutableDictionary dictionary];
-    extendedRequest[@"_id"] = dialogID;
+    NSMutableDictionary *extendedRequest = @{@"_id":dialogID}.mutableCopy;
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    __weak __typeof(self)weakSelf = self;
+    [QBRequest dialogsForPage:responsePage extendedRequest:extendedRequest successBlock:^(QBResponse *response, NSArray *dialogObjects, NSSet *dialogsUsersIDs, QBResponsePage *page) {
+        __typeof(weakSelf)strongSelf = weakSelf;
         
-        [QBRequest dialogsForPage:responsePage
-                  extendedRequest:extendedRequest
-                     successBlock:^(QBResponse *response,
-                                    NSArray *dialogObjects,
-                                    NSSet *dialogsUsersIDs,
-                                    QBResponsePage *page)
-         {
-             QBChatDialog *dialog = dialogObjects.firstObject;
-             
-             if (dialog) {
-                 
-                 __weak __typeof(self)weakSelf = self;
-                 [self.dialogsMemoryStorage addChatDialog:dialog
-                                                  andJoin:YES
-                                               completion:^(QBChatDialog *addedDialog,
-                                                            NSError *error)
-                  {
-                      
-                      if ([weakSelf.multicastDelegate
-                           respondsToSelector:@selector(chatService:
-                                                        didAddChatDialogToMemoryStorage:)]) {
-                               
-                               [weakSelf.multicastDelegate chatService:weakSelf
-                                       didAddChatDialogToMemoryStorage:addedDialog];
-                           }
-                      
-                      [source setResult:addedDialog];
-                  }];
-             }
-             
-         } errorBlock:^(QBResponse *response) {
-             
-             [self.serviceManager handleErrorResponse:response];
-             [source setError:response.error.error];
-         }];
-    });
+        if ([dialogObjects firstObject] != nil) {
+            
+            [strongSelf.dialogsMemoryStorage addChatDialog:[dialogObjects firstObject] andJoin:YES completion:nil];
+            
+            if ([strongSelf.multicastDelegate respondsToSelector:@selector(chatService:didAddChatDialogToMemoryStorage:)]) {
+                
+                [strongSelf.multicastDelegate chatService:strongSelf didAddChatDialogToMemoryStorage:[dialogObjects firstObject]];
+            }
+        }
+        
+        [source setResult:[dialogObjects firstObject]];
+        
+    } errorBlock:^(QBResponse *response) {
+        
+        [weakSelf.serviceManager handleErrorResponse:response];
+        [source setError:response.error.error];
+    }];
+    
+    return source.task;
 }
 
 - (BFTask *)fetchDialogsUpdatedFromDate:(NSDate *)date
                            andPageLimit:(NSUInteger)limit
-                         iterationBlock:(void(^)(QBResponse *response,
-                                                 NSArray<QBChatDialog *> *dialogObjects,
-                                                 NSSet<NSNumber *> *dialogsUsersIDs,
-                                                 BOOL *stop))iterationBlock {
+                         iterationBlock:(void(^)(QBResponse *response, NSArray *dialogObjects, NSSet *dialogsUsersIDs, BOOL *stop))iterationBlock {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self fetchDialogsUpdatedFromDate:date andPageLimit:limit iterationBlock:iterationBlock completionBlock:^(QBResponse *response) {
         
-        [self fetchDialogsUpdatedFromDate:date
-                             andPageLimit:limit
-                           iterationBlock:iterationBlock
-                          completionBlock:^(QBResponse *response)
-         {
-             if (response.success) {
-                 [source setResult:nil];
-             }
-             else {
-                 [source setError:response.error.error];
-             }
-         }];
-    });
+        if (response.success) {
+            
+            [source setResult:nil];
+        }
+        else {
+            
+            [source setError:response.error.error];
+        }
+    }];
+    
+    return source.task;
 }
 
-//MARK: - notifications
+#pragma mark - notifications
 
-- (BFTask *)sendSystemMessageAboutAddingToDialog:(QBChatDialog *)chatDialog
-                                      toUsersIDs:(NSArray *)usersIDs
-                                        withText:(NSString *)text {
+- (BFTask *)sendSystemMessageAboutAddingToDialog:(QBChatDialog *)chatDialog toUsersIDs:(NSArray *)usersIDs withText:(NSString *)text {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self sendSystemMessageAboutAddingToDialog:chatDialog toUsersIDs:usersIDs withText:text completion:^(NSError *error) {
         
-        [self sendSystemMessageAboutAddingToDialog:chatDialog
-                                        toUsersIDs:usersIDs
-                                          withText:text
-                                        completion:^(NSError *error)
-         {
-             if (error != nil) {
-                 [source setError:error];
-             }
-             else {
-                 [source setResult:nil];
-             }
-         }];
-    });
+        if (error != nil) {
+            
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)sendMessageAboutAcceptingContactRequest:(BOOL)accept
-                                       toOpponentID:(NSUInteger)opponentID {
+- (BFTask *)sendMessageAboutAcceptingContactRequest:(BOOL)accept toOpponentID:(NSUInteger)opponentID {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self sendMessageAboutAcceptingContactRequest:accept toOpponentID:opponentID completion:^(NSError *error) {
         
-        [self sendMessageAboutAcceptingContactRequest:accept
-                                         toOpponentID:opponentID
-                                           completion:^(NSError *error)
-         {
-             if (error != nil) {
-                 [source setError:error];
-             }
-             else {
-                 [source setResult:nil];
-             }
-         }];
-    });
+        if (error != nil) {
+            
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)sendNotificationMessageAboutAddingOccupants:(NSArray *)occupantsIDs
-                                               toDialog:(QBChatDialog *)chatDialog
-                                   withNotificationText:(NSString *)notificationText {
+- (BFTask *)sendNotificationMessageAboutAddingOccupants:(NSArray *)occupantsIDs toDialog:(QBChatDialog *)chatDialog withNotificationText:(NSString *)notificationText {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self sendNotificationMessageAboutAddingOccupants:occupantsIDs toDialog:chatDialog withNotificationText:notificationText completion:^(NSError *error) {
         
-        [self sendNotificationMessageAboutAddingOccupants:occupantsIDs
-                                                 toDialog:chatDialog
-                                     withNotificationText:notificationText
-                                               completion:^(NSError *error)
-         {
-             if (error != nil) {
-                 [source setError:error];
-             }
-             else {
-                 [source setResult:nil];
-             }
-         }];
-    });
+        if (error != nil) {
+            
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)sendNotificationMessageAboutLeavingDialog:(QBChatDialog *)chatDialog
-                                 withNotificationText:(NSString *)notificationText {
+- (BFTask *)sendNotificationMessageAboutLeavingDialog:(QBChatDialog *)chatDialog withNotificationText:(NSString *)notificationText {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self sendNotificationMessageAboutLeavingDialog:chatDialog withNotificationText:notificationText completion:^(NSError *error) {
         
-        [self sendNotificationMessageAboutLeavingDialog:chatDialog
-                                   withNotificationText:notificationText
-                                             completion:^(NSError *error)
-         {
-             if (error != nil) {
-                 [source setError:error];
-             }
-             else {
-                 [source setResult:nil];
-             }
-         }];
-    });
+        if (error != nil) {
+            
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)sendNotificationMessageAboutChangingDialogPhoto:(QBChatDialog *)chatDialog
-                                       withNotificationText:(NSString *)notificationText {
+- (BFTask *)sendNotificationMessageAboutChangingDialogPhoto:(QBChatDialog *)chatDialog withNotificationText:(NSString *)notificationText {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self sendNotificationMessageAboutChangingDialogPhoto:chatDialog withNotificationText:notificationText completion:^(NSError *error) {
         
-        [self sendNotificationMessageAboutChangingDialogPhoto:chatDialog
-                                         withNotificationText:notificationText
-                                                   completion:^(NSError *error)
-         {
-             if (error != nil) {
-                 [source setError:error];
-             }
-             else {
-                 [source setResult:nil];
-             }
-         }];
-    });
+        if (error != nil) {
+            
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
     
+    return source.task;
 }
 
-- (BFTask *)sendNotificationMessageAboutChangingDialogName:(QBChatDialog *)chatDialog
-                                      withNotificationText:(NSString *)notificationText {
+- (BFTask *)sendNotificationMessageAboutChangingDialogName:(QBChatDialog *)chatDialog withNotificationText:(NSString *)notificationText {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self sendNotificationMessageAboutChangingDialogName:chatDialog withNotificationText:notificationText completion:^(NSError *error) {
         
-        [self sendNotificationMessageAboutChangingDialogName:chatDialog
-                                        withNotificationText:notificationText
-                                                  completion:^(NSError *error)
-         {
-             if (error != nil) {
-                 [source setError:error];
-             }
-             else {
-                 [source setResult:nil];
-             }
-         }];
-    });
+        if (error != nil) {
+            
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
-//MARK: - Message sending
+#pragma mark - Message sending
 
-- (BFTask *)sendMessage:(QBChatMessage *)message
-                   type:(QMMessageType)type
-               toDialog:(QBChatDialog *)dialog
-          saveToHistory:(BOOL)saveToHistory
-          saveToStorage:(BOOL)saveToStorage {
+- (BFTask *)sendMessage:(QBChatMessage *)message type:(QMMessageType)type toDialog:(QBChatDialog *)dialog saveToHistory:(BOOL)saveToHistory saveToStorage:(BOOL)saveToStorage {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource *source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self sendMessage:message type:type toDialog:dialog saveToHistory:saveToHistory saveToStorage:saveToStorage completion:^(NSError * _Nullable error) {
         
-        [self sendMessage:message
-                     type:type
-                 toDialog:dialog
-            saveToHistory:saveToHistory
-            saveToStorage:saveToStorage
-               completion:^(NSError *error)
-         {
-             if (error) {
-                 [source setError:error];
-             }
-             else {
-                 [source setResult:nil];
-             }
-         }];
-    });
+        if (error != nil) {
+            
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)sendMessage:(QBChatMessage *)message
-             toDialogID:(NSString *)dialogID
-          saveToHistory:(BOOL)saveToHistory
-          saveToStorage:(BOOL)saveToStorage {
+- (BFTask *)sendMessage:(QBChatMessage *)message toDialogID:(NSString *)dialogID saveToHistory:(BOOL)saveToHistory saveToStorage:(BOOL)saveToStorage {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self sendMessage:message toDialogID:dialogID saveToHistory:saveToHistory saveToStorage:saveToStorage completion:^(NSError *error) {
         
-        [self sendMessage:message
-               toDialogID:dialogID
-            saveToHistory:saveToHistory
-            saveToStorage:saveToStorage
-               completion:^(NSError *error)
-         {
-             
-             if (error != nil) {
-                 [source setError:error];
-             }
-             else {
-                 [source setResult:nil];
-             }
-         }];
-    });
+        if (error != nil) {
+            
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)sendMessage:(QBChatMessage *)message
-               toDialog:(QBChatDialog *)dialog
-          saveToHistory:(BOOL)saveToHistory
-          saveToStorage:(BOOL)saveToStorage {
+- (BFTask *)sendMessage:(QBChatMessage *)message toDialog:(QBChatDialog *)dialog saveToHistory:(BOOL)saveToHistory saveToStorage:(BOOL)saveToStorage {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self sendMessage:message toDialog:dialog saveToHistory:saveToHistory saveToStorage:saveToStorage completion:^(NSError *error) {
         
-        [self sendMessage:message
-                 toDialog:dialog
-            saveToHistory:saveToHistory
-            saveToStorage:saveToStorage
-               completion:^(NSError *error)
-         {
-             if (error != nil) {
-                 [source setError:error];
-             }
-             else {
-                 [source setResult:nil];
-             }
-         }];
-    });
+        if (error != nil) {
+            
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)sendAttachmentMessage:(QBChatMessage *)attachmentMessage
-                         toDialog:(QBChatDialog *)dialog
-              withAttachmentImage:(UIImage *)image {
+- (BFTask *)sendAttachmentMessage:(QBChatMessage *)attachmentMessage toDialog:(QBChatDialog *)dialog withAttachmentImage:(UIImage *)image {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self sendAttachmentMessage:attachmentMessage toDialog:dialog withAttachmentImage:image completion:^(NSError *error) {
         
-        [self sendAttachmentMessage:attachmentMessage
-                           toDialog:dialog
-                withAttachmentImage:image
-                         completion:^(NSError *error) {
-                             
-                             if (error != nil) {
-                                 [source setError:error];
-                             }
-                             else {
-                                 [source setResult:nil];
-                             }
-                         }];
-    });
+        if (error != nil) {
+            
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
-- (BFTask *)sendAttachmentMessage:(QBChatMessage *)attachmentMessage
-                         toDialog:(QBChatDialog *)dialog
-                   withAttachment:(QBChatAttachment *)attachment {
-    
-    return make_task(^(BFTaskCompletionSource * _Nonnull source) {
-        
-        [self sendAttachmentMessage:attachmentMessage
-                           toDialog:dialog
-                     withAttachment:attachment
-                         completion:^(NSError * _Nullable error) {
-                             error ?
-                             [source setError:error] :
-                             [source setResult:nil];
-                         }];
-    });
-}
-
-//MARK: - Message marking
+#pragma mark - Message marking
 
 - (BFTask *)markMessageAsDelivered:(QBChatMessage *)message {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self markMessageAsDelivered:message completion:^(NSError *error) {
         
-        [self markMessageAsDelivered:message completion:^(NSError *error) {
+        if (error != nil) {
             
-            if (error != nil) {
-                [source setError:error];
-            }
-            else {
-                [source setResult:nil];
-            }
-        }];
-    });
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
 - (BFTask *)markMessagesAsDelivered:(NSArray *)messages {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self markMessagesAsDelivered:messages completion:^(NSError *error) {
         
-        [self markMessagesAsDelivered:messages completion:^(NSError *error) {
+        if (error != nil) {
             
-            if (error != nil) {
-                [source setError:error];
-            }
-            else {
-                [source setResult:nil];
-            }
-        }];
-    });
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
 - (BFTask *)readMessage:(QBChatMessage *)message {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self readMessage:message completion:^(NSError *error) {
         
-        [self readMessage:message completion:^(NSError *error) {
+        if (error != nil) {
             
-            if (error != nil) {
-                [source setError:error];
-            }
-            else {
-                [source setResult:nil];
-            }
-        }];
-    });
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
 
 - (BFTask *)readMessages:(NSArray *)messages forDialogID:(NSString *)dialogID {
     
-    return make_task(^(BFTaskCompletionSource *source) {
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self readMessages:messages forDialogID:dialogID completion:^(NSError *error) {
         
-        [self readMessages:messages forDialogID:dialogID
-                completion:^(NSError *error)
-         {
-             if (error != nil) {
-                 [source setError:error];
-             }
-             else {
-                 [source setResult:nil];
-             }
-         }];
-    });
+        if (error != nil) {
+            
+            [source setError:error];
+        }
+        else {
+            
+            [source setResult:nil];
+        }
+    }];
+    
+    return source.task;
 }
+
 
 static inline  NSPredicate* qm_laterMessagesPredicate(NSString *dialogID, NSDate *messageDate) {
     NSPredicate *dialogPredicate =
@@ -934,5 +855,6 @@ static inline  NSPredicate* qm_laterMessagesPredicate(NSString *dialogID, NSDate
 static inline  NSPredicate* qm_laterDialogsPredicate(NSDate *dialogsDate) {
     return [NSPredicate predicateWithFormat:@"SELF.updatedAt >= %@", dialogsDate];
 }
+
 
 @end

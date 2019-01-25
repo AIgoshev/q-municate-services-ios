@@ -7,6 +7,7 @@
 //
 
 #import "QMBaseService.h"
+
 #import "QMSLog.h"
 
 BFTask *make_task(QMTaskSourceBlock b) {
@@ -22,9 +23,11 @@ BFTask *make_task(QMTaskSourceBlock b) {
     return source.task;
 }
 
-@interface QMBaseService()
+@interface QMBaseService() <QMDeferredQueueManagerDelegate>
 
 @property (weak, nonatomic) id <QMServiceManagerProtocol> serviceManager;
+
+@property (strong, nonatomic, readwrite) QMDeferredQueueManager *deferredQueueManager;
 
 @end
 
@@ -34,9 +37,8 @@ BFTask *make_task(QMTaskSourceBlock b) {
     
     self = [super init];
     if (self) {
-        
+        self.serviceManager = serviceManager;
         QMSLog(@"Init - %@ service...", NSStringFromClass(self.class));
-        _serviceManager = serviceManager;
         [self serviceWillStart];
     }
     return self;
@@ -46,7 +48,20 @@ BFTask *make_task(QMTaskSourceBlock b) {
     
 }
 
-//MARK: - QMMemoryStorageProtocol
+- (QMDeferredQueueManager *)deferredQueueManager {
+    
+    static QMDeferredQueueManager *manager = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        
+        manager = [[QMDeferredQueueManager alloc] init];
+        [manager addDelegate:self];
+    });
+    
+    return manager;
+}
+
+#pragma mark - QMMemoryStorageProtocol
 
 - (void)free {
     
@@ -58,4 +73,3 @@ BFTask *make_task(QMTaskSourceBlock b) {
 }
 
 @end
-

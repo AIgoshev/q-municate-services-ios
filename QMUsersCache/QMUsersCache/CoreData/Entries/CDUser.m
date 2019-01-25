@@ -1,5 +1,12 @@
 #import "CDUser.h"
-#import "QMSLog.h"
+
+
+@interface CDUser ()
+
+// Private interface goes here.
+
+@end
+
 
 @implementation CDUser
 
@@ -7,12 +14,12 @@
 	
 	QBUUser *qbUser = [QBUUser user];
 	
-	qbUser.ID = self.idValue;
+	qbUser.ID = self.id.integerValue;
 	qbUser.updatedAt = self.updatedAt;
 	qbUser.createdAt = self.createdAt;
 	
-    qbUser.externalUserID = self.externalUserIDValue;
-    qbUser.blobID = self.blobIDValue;
+	qbUser.externalUserID = self.externalUserID.integerValue;
+	qbUser.blobID = self.blobID.integerValue;
 	qbUser.facebookID = self.facebookID;
 	qbUser.twitterID = self.twitterID;
 	qbUser.fullName = self.fullName;
@@ -29,11 +36,12 @@
 
 - (void)updateWithQBUser:(QBUUser *)user {
 	
-    self.idValue = (int32_t)user.ID;
+	self.id = @(user.ID);
 	self.updatedAt = user.updatedAt;
 	self.createdAt = user.createdAt;
-	self.externalUserIDValue = (int32_t)user.externalUserID;
-	self.blobIDValue = (int32_t)user.blobID;
+	self.externalUserID = @(user.externalUserID);
+	self.blobID = @(user.blobID);
+	
 	self.facebookID = user.facebookID;
 	self.twitterID = user.twitterID;
 	self.fullName = user.fullName;
@@ -44,14 +52,8 @@
 	self.tags = [user.tags componentsJoinedByString:@","];
 	self.customData = user.customData;
 	self.lastRequestAt = user.lastRequestAt;
-    
-    if (!self.changedValues.count) {
-        [self.managedObjectContext refreshObject:self mergeChanges:NO];
-    }
-    else if (!self.isInserted){
-        QMSLog(@"Cache > %@ > %@: %@", self.class, self.id ,self.changedValues);
-    }
 }
+
 
 @end
 

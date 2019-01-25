@@ -15,7 +15,6 @@
 #import "QMAttachmentContentService.h"
 #import "QMAttachmentAssetService.h"
 
-
 const char *kChatCacheQueue = "com.q-municate.chatCacheQueue";
 static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
@@ -23,19 +22,17 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
 @interface QMChatService()<QBChatDelegate, QMDeferredQueueManagerDelegate, QMAttachmentStoreServiceDelegate>
 
-@property (strong, nonatomic) QBMulticastDelegate <QMChatServiceDelegate, QMChatConnectionDelegate> *multicastDelegate;
 @property (weak, nonatomic) id <QMChatServiceCacheDataSource> cacheDataSource;
+@property (assign, nonatomic, readwrite) QMChatConnectionState chatConnectionState;
+@property (strong, nonatomic) QBMulticastDelegate <QMChatServiceDelegate, QMChatConnectionDelegate> *multicastDelegate;
 @property (strong, nonatomic) QMDialogsMemoryStorage *dialogsMemoryStorage;
 @property (strong, nonatomic) QMMessagesMemoryStorage *messagesMemoryStorage;
 @property (strong, nonatomic) QMChatAttachmentService *chatAttachmentService;
 
+@property (weak, nonatomic)   BFTask* loadEarlierMessagesTask;
 @property (strong, nonatomic) NSMutableDictionary *loadedAllMessages;
 @property (strong, nonatomic) NSMutableDictionary *lastMessagesLoadDate;
-
-@property (strong, nonatomic) NSMutableSet *readableMessages;
-
-
-@property (weak, nonatomic) BFTask* loadEarlierMessagesTask;
+@property (strong, nonatomic) NSMutableSet *messagesToRead;
 
 @end
 
@@ -48,7 +45,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     [QBChat.instance removeDelegate:self];
 }
 
-//MARK: - Configure
+#pragma mark - Configure
 
 - (instancetype)initWithServiceManager:(id<QMServiceManagerProtocol>)serviceManager
                        cacheDataSource:(id<QMChatServiceCacheDataSource>)cacheDataSource {
@@ -60,7 +57,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
         _cacheDataSource = cacheDataSource;
         _loadedAllMessages = [NSMutableDictionary dictionary];
         _lastMessagesLoadDate = [NSMutableDictionary dictionary];
-        _readableMessages = [NSMutableSet set];
+        _messagesToRead = [NSMutableSet set];
         
         if (self.serviceManager.currentUser != nil) {
             [self loadCachedDialogsWithCompletion:nil];
@@ -75,8 +72,6 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     _multicastDelegate = (id<QMChatServiceDelegate, QMChatConnectionDelegate>)[[QBMulticastDelegate alloc] init];
     _dialogsMemoryStorage = [[QMDialogsMemoryStorage alloc] init];
     _messagesMemoryStorage = [[QMMessagesMemoryStorage alloc] init];
-    _deferredQueueManager = [[QMDeferredQueueManager alloc] initWithServiceManager:self.serviceManager];
-    [_deferredQueueManager addDelegate:self];
     _messagesMemoryStorage.delegate = (id<QMMemoryTemporaryQueueDelegate>)self.deferredQueueManager;
     
     QMAttachmentStoreService *storeService = [[QMAttachmentStoreService alloc] initWithDelegate:self];
@@ -90,7 +85,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     [QBChat.instance addDelegate:self];
 }
 
-//MARK: - Load cached data
+#pragma mark - Load cached data
 
 - (void)loadCachedDialogsWithCompletion:(dispatch_block_t)completion {
     
@@ -103,20 +98,23 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
         [self.cacheDataSource cachedDialogs:^(NSArray *collection) {
             
             if (collection.count > 0) {
+                // We need only current users dialog
                 
-                [weakSelf.dialogsMemoryStorage addChatDialogs:collection
-                                                      andJoin:NO];
+                NSPredicate *predicate = [NSPredicate predicateWithFormat:@"%lu IN self.occupantIDs", weakSelf.serviceManager.currentUser.ID];
+                NSArray *userDialogs = [collection filteredArrayUsingPredicate:predicate];
                 
-                NSMutableSet *dialogsUsersIDs = [NSMutableSet set];
+                [weakSelf.dialogsMemoryStorage addChatDialogs:userDialogs andJoin:NO];
                 
-                for (QBChatDialog *dialog in collection) {
-                    [dialogsUsersIDs addObjectsFromArray:dialog.occupantIDs];
+                if ([weakSelf.multicastDelegate respondsToSelector:@selector(chatService:didAddChatDialogsToMemoryStorage:)]) {
+                    [weakSelf.multicastDelegate chatService:weakSelf didAddChatDialogsToMemoryStorage:collection];
                 }
                 
+                NSMutableSet *dialogsUsersIDs = [NSMutableSet set];
+                for (QBChatDialog *dialog in userDialogs) {
+                    [dialogsUsersIDs addObjectsFromArray:dialog.occupantIDs];
+                }
                 if ([weakSelf.multicastDelegate respondsToSelector:@selector(chatService:didLoadChatDialogsFromCache:withUsers:)]) {
-                    [weakSelf.multicastDelegate chatService:weakSelf
-                                didLoadChatDialogsFromCache:collection
-                                                  withUsers:dialogsUsersIDs.copy];
+                    [weakSelf.multicastDelegate chatService:weakSelf didLoadChatDialogsFromCache:userDialogs withUsers:dialogsUsersIDs.copy];
                 }
             }
             
@@ -127,7 +125,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     }
 }
 
-- (void)loadCachedMessagesWithDialogID:(NSString *)dialogID completion:(void(^)(void))completion {
+- (void)loadCachedMessagesWithDialogID:(NSString *)dialogID compleion:(void(^)())completion {
     
     if ([self.cacheDataSource respondsToSelector:@selector(cachedMessagesWithDialogID:block:)]) {
         
@@ -141,6 +139,10 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
                 }
                 
                 [weakSelf.messagesMemoryStorage addMessages:collection forDialogID:dialogID];
+                
+                if ([weakSelf.multicastDelegate respondsToSelector:@selector(chatService:didAddMessagesToMemoryStorage:forDialogID:)]) {
+                    [weakSelf.multicastDelegate chatService:weakSelf didAddMessagesToMemoryStorage:collection forDialogID:dialogID];
+                }
             }
             
             if (completion) {
@@ -150,7 +152,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     }
 }
 
-//MARK: - Add / Remove Multicast delegate
+#pragma mark - Add / Remove Multicast delegate
 
 - (void)addDelegate:(id<QMChatServiceDelegate, QMChatConnectionDelegate>)delegate {
     
@@ -162,7 +164,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     [self.multicastDelegate removeDelegate:delegate];
 }
 
-//MARK: - QBChatDelegate
+#pragma mark - QBChatDelegate
 
 - (void)chatDidFailWithStreamError:(NSError *)error {
     
@@ -173,6 +175,8 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
 - (void)chatDidConnect {
     
+    self.chatConnectionState = QMChatConnectionStateConnected;
+    
     if ([self.multicastDelegate respondsToSelector:@selector(chatServiceChatDidConnect:)]) {
         [self.multicastDelegate chatServiceChatDidConnect:self];
     }
@@ -180,7 +184,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
 - (void)chatDidNotConnectWithError:(NSError *)error {
     
-    [self.deferredQueueManager cancelAllOperations];
+    self.chatConnectionState = QMChatConnectionStateDisconnected;
     
     if ([self.multicastDelegate respondsToSelector:@selector(chatService:chatDidNotConnectWithError:)]) {
         [self.multicastDelegate chatService:self chatDidNotConnectWithError:error];
@@ -189,7 +193,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
 - (void)chatDidAccidentallyDisconnect {
     
-    [self.deferredQueueManager cancelAllOperations];
+    self.chatConnectionState = QMChatConnectionStateDisconnected;
     
     if ([self.multicastDelegate respondsToSelector:@selector(chatServiceChatDidAccidentallyDisconnect:)]) {
         [self.multicastDelegate chatServiceChatDidAccidentallyDisconnect:self];
@@ -198,12 +202,14 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
 - (void)chatDidReconnect {
     
+    self.chatConnectionState = QMChatConnectionStateConnected;
+    
     if ([self.multicastDelegate respondsToSelector:@selector(chatServiceChatDidReconnect:)]) {
         [self.multicastDelegate chatServiceChatDidReconnect:self];
     }
 }
 
-//MARK: Handle messages (QBChatDelegate)
+#pragma mark Handle messages (QBChatDelegate)
 
 - (void)chatRoomDidReceiveMessage:(QBChatMessage *)message
                      fromDialogID:(NSString *)dialogID {
@@ -228,7 +234,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     NSParameterAssert(dialogID != nil);
     NSParameterAssert(messageID != nil);
     
-    QBChatMessage *message = [self.messagesMemoryStorage messageWithID:messageID fromDialogID:dialogID];
+    QBChatMessage* message = [self.messagesMemoryStorage messageWithID:messageID fromDialogID:dialogID];
     
     if (message) {
         
@@ -270,7 +276,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     NSParameterAssert(dialogID != nil);
     NSParameterAssert(messageID != nil);
     
-    QBChatMessage *message = [self.messagesMemoryStorage messageWithID:messageID fromDialogID:dialogID];
+    QBChatMessage* message = [self.messagesMemoryStorage messageWithID:messageID fromDialogID:dialogID];
     
     if (message != nil) {
         if (message.deliveredIDs == nil) {
@@ -289,7 +295,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     }
 }
 
-//MARK: - Chat Login/Logout
+#pragma mark - Chat Login/Logout
 
 - (void)connectWithCompletionBlock:(QBChatCompletionBlock)completion {
     
@@ -317,6 +323,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
             [self.multicastDelegate chatServiceChatHasStartedConnecting:self];
         }
         
+        self.chatConnectionState = QMChatConnectionStateConnecting;
         [[QBChat instance] connectWithUser:self.serviceManager.currentUser
                                 completion:completion];
     }
@@ -327,7 +334,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     [[QBChat instance] disconnectWithCompletionBlock:completion];
 }
 
-//MARK: - Handle Chat messages
+#pragma mark - Handle Chat messages
 
 - (void)handleSystemMessage:(QBChatMessage *)message {
     
@@ -365,7 +372,8 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     
     if (!message.dialogID) {
         
-        QMSLog(@"handleChatMessage: message.dialogID == nil");
+        QMSLog(@"Need update this case");
+        
         return;
     }
     
@@ -443,39 +451,46 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
                 updatedAt = message.dialogUpdatedAt;
             }
             
-            switch (message.dialogUpdateType) {
-                    
-                case QMDialogUpdateTypeName:
-                    chatDialogToUpdate.name = message.dialogName;
-                    break;
-                    
-                case QMDialogUpdateTypePhoto:
-                    chatDialogToUpdate.photo = message.dialogPhoto;
-                    break;
-                    
-                case QMDialogUpdateTypeOccupants: {
-                    
-                    NSMutableSet *occupantsSet = [NSMutableSet setWithArray:chatDialogToUpdate.occupantIDs];
-                    
-                    if (message.addedOccupantsIDs.count > 0) {
+            if ([chatDialogToUpdate.updatedAt compare:updatedAt] != NSOrderedDescending) {
+                
+                switch (message.dialogUpdateType) {
                         
-                        [occupantsSet addObjectsFromArray:message.addedOccupantsIDs];
-                    }
-                    else if (message.deletedOccupantsIDs.count > 0) {
+                    case QMDialogUpdateTypeName:
+                        chatDialogToUpdate.name = message.dialogName;
+                        break;
                         
-                        [occupantsSet minusSet:[NSSet setWithArray:message.deletedOccupantsIDs]];
+                    case QMDialogUpdateTypePhoto:
+                        chatDialogToUpdate.photo = message.dialogPhoto;
+                        break;
+                        
+                    case QMDialogUpdateTypeOccupants: {
+                        
+                        NSMutableSet *occupantsSet = [NSMutableSet setWithArray:chatDialogToUpdate.occupantIDs];
+                        
+                        if (message.addedOccupantsIDs.count > 0) {
+                            
+                            [occupantsSet addObjectsFromArray:message.addedOccupantsIDs];
+                        }
+                        else if (message.deletedOccupantsIDs.count > 0) {
+                            
+                            [occupantsSet minusSet:[NSSet setWithArray:message.deletedOccupantsIDs]];
+                        }
+                        
+                        chatDialogToUpdate.occupantIDs = [occupantsSet allObjects];
+                        
+                        break;
                     }
-                    
-                    chatDialogToUpdate.occupantIDs = [occupantsSet allObjects];
-                    
-                    break;
+                        
+                    case QMDialogUpdateTypeNone:
+                        break;
                 }
-                    
-                case QMDialogUpdateTypeNone:
-                    break;
+                
+                chatDialogToUpdate.updatedAt = updatedAt;
             }
-            
-            chatDialogToUpdate.updatedAt = updatedAt;
+            else {
+                
+                chatDialogToUpdate.updatedAt = message.dateSent;
+            }
         }
         // old custom parameters handling
         else if (message.dialog != nil) {
@@ -515,7 +530,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
              || message.messageType == QMMessageTypeRejectContactRequest
              || message.messageType == QMMessageTypeDeleteContactRequest) {
         
-        if (chatDialogToUpdate) {
+        if (chatDialogToUpdate != nil) {
             
             chatDialogToUpdate.unreadMessagesCount++;
             
@@ -529,8 +544,8 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
         }
         else {
             
-            chatDialogToUpdate = [[QBChatDialog alloc] initWithDialogID:message.dialogID
-                                                                   type:QBChatDialogTypePrivate];
+            chatDialogToUpdate = [[QBChatDialog alloc] initWithDialogID:message.dialogID type:QBChatDialogTypePrivate];
+            
             NSUInteger opponentID = message.senderID;
             
             if (message.senderID == self.serviceManager.currentUser.ID) {
@@ -540,6 +555,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
             
             chatDialogToUpdate.occupantIDs = @[@(self.serviceManager.currentUser.ID), @(opponentID)];
             chatDialogToUpdate.unreadMessagesCount++;
+            
             // updating dialog last message params
             [self updateLastMessageParamsForChatDialog:chatDialogToUpdate withMessage:message];
             chatDialogToUpdate.updatedAt = message.dateSent;
@@ -590,7 +606,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     }
 }
 
-//MARK: - Group dialog join
+#pragma mark - Group dialog join
 
 - (void)joinToGroupDialog:(QBChatDialog *)dialog completion:(QBChatCompletionBlock)completion {
     
@@ -628,7 +644,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     }];
 }
 
-//MARK: - Dialog history
+#pragma mark - Dialog history
 
 - (void)allDialogsWithPageLimit:(NSUInteger)limit
                 extendedRequest:(NSDictionary *)extendedRequest
@@ -719,7 +735,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     request([QBResponsePage responsePageWithLimit:limit]);
 }
 
-//MARK: - Chat dialog creation
+#pragma mark - Chat dialog creation
 
 - (void)createPrivateChatDialogWithOpponentID:(NSUInteger)opponentID
                                    completion:(void(^)(QBResponse *response, QBChatDialog *createdDialog))completion {
@@ -815,7 +831,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     }];
 }
 
-//MARK: - Edit dialog methods
+#pragma mark - Edit dialog methods
 
 - (void)changeDialogName:(NSString *)dialogName forChatDialog:(QBChatDialog *)chatDialog
               completion:(void(^)(QBResponse *response, QBChatDialog *updatedDialog))completion {
@@ -844,9 +860,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     }];
 }
 
-- (void)changeDialogAvatar:(NSString *)avatarPublicUrl
-             forChatDialog:(QBChatDialog *)chatDialog
-                completion:(void(^)(QBResponse *response, QBChatDialog *updatedDialog))completion {
+- (void)changeDialogAvatar:(NSString *)avatarPublicUrl forChatDialog:(QBChatDialog *)chatDialog completion:(void(^)(QBResponse *response, QBChatDialog *updatedDialog))completion {
     
     NSAssert(avatarPublicUrl != nil, @"avatarPublicUrl can't be nil");
     NSAssert(chatDialog != nil, @"Dialog can't be nil");
@@ -855,14 +869,10 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     
     __weak __typeof(self)weakSelf = self;
     [QBRequest updateDialog:chatDialog successBlock:^(QBResponse *response, QBChatDialog *dialog) {
-        
-        [weakSelf.dialogsMemoryStorage addChatDialog:dialog
-                                             andJoin:self.isAutoJoinEnabled
-                                          completion:^(QBChatDialog *addedDialog, NSError *error) {
-                                              if (completion) {
-                                                  completion(response, addedDialog);
-                                              }
-                                          }];
+        //
+        [weakSelf.dialogsMemoryStorage addChatDialog:dialog andJoin:self.isAutoJoinEnabled completion:^(QBChatDialog *addedDialog, NSError *error) {
+            if (completion) completion(response, addedDialog);
+        }];
     } errorBlock:^(QBResponse *response) {
         //
         [weakSelf.serviceManager handleErrorResponse:response];
@@ -938,21 +948,9 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     }];
 }
 
-//MARK: - Messages histroy
-
-- (void)updateMessageLocally:(QBChatMessage *)message {
-    
-    NSAssert(message.dialogID, @"Message must have a dialog ID.");
-    
-    [self.messagesMemoryStorage updateMessage:message];
-    
-    if ([self.multicastDelegate respondsToSelector:@selector(chatService:didUpdateMessage:forDialogID:)]) {
-        [self.multicastDelegate chatService:self didUpdateMessage:message forDialogID:message.dialog.ID];
-    }
-}
+#pragma mark - Messages histroy
 
 - (void)deleteMessageLocally:(QBChatMessage *)message {
-    
     NSAssert(message.dialogID, @"Message must have a dialog ID.");
     
     [self deleteMessagesLocally:@[message] forDialogID:message.dialogID];
@@ -961,11 +959,6 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 - (void)deleteMessagesLocally:(NSArray *)messages forDialogID:(NSString *)dialogID {
     
     NSArray *messagesToDelete = messages.copy;
-    
-    for (QBChatMessage *msg in messages) {
-        [self.deferredQueueManager removeMessage:msg andCallDelegate:NO];
-    }
-    
     [self.messagesMemoryStorage deleteMessages:messages forDialogID:dialogID];
     if ([self.multicastDelegate respondsToSelector:@selector(chatService:didDeleteMessagesFromMemoryStorage:forDialogID:)]) {
         [self.multicastDelegate chatService:self didDeleteMessagesFromMemoryStorage:messagesToDelete forDialogID:dialogID];
@@ -998,11 +991,12 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
                       completion:(void (^)(QBResponse *response, NSArray<QBChatMessage *>  *messages))completion {
     
     dispatch_group_t messagesLoadGroup = dispatch_group_create();
-    
     if ([[self.messagesMemoryStorage messagesWithDialogID:chatDialogID] count] == 0) {
+        
         // loading messages from cache
         dispatch_group_enter(messagesLoadGroup);
-        [self loadCachedMessagesWithDialogID:chatDialogID completion:^{
+        [self loadCachedMessagesWithDialogID:chatDialogID compleion:^{
+            
             dispatch_group_leave(messagesLoadGroup);
         }];
     }
@@ -1014,9 +1008,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
         QBResponsePage *page = [QBResponsePage responsePageWithLimit:strongSelf.chatMessagesPerPage];
         NSMutableArray *allMessages = [[NSMutableArray alloc] init];
         
-        NSDictionary *extendedRequest = extendedParameters.count > 0 ?
-        extendedParameters :
-        [strongSelf parametersForMessagesUsingDialogID:chatDialogID];
+        NSDictionary *extendedRequest = extendedParameters.count > 0 ? extendedParameters : [strongSelf parametersForMessagesUsingDialogID:chatDialogID];
         
         __block void(^t_request)(QBResponsePage *responsePage, NSDictionary *parameters);
         void(^request)(QBResponsePage *responsePage, NSDictionary *parameters) = ^(QBResponsePage *responsePage, NSDictionary *parameters) {
@@ -1038,12 +1030,8 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
                          
                          [strongSelf.messagesMemoryStorage replaceMessages:sortedMessages forDialogID:chatDialogID];
                          
-                         if ([strongSelf.multicastDelegate
-                              respondsToSelector:@selector(chatService:didAddMessagesToMemoryStorage:forDialogID:)]) {
-                             
-                             [strongSelf.multicastDelegate chatService:strongSelf
-                                         didAddMessagesToMemoryStorage:sortedMessages
-                                                           forDialogID:chatDialogID];
+                         if ([strongSelf.multicastDelegate respondsToSelector:@selector(chatService:didAddMessagesToMemoryStorage:forDialogID:)]) {
+                             [strongSelf.multicastDelegate chatService:strongSelf didAddMessagesToMemoryStorage:sortedMessages forDialogID:chatDialogID];
                          }
                      }
                      else {
@@ -1059,21 +1047,15 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
                          
                          if (newMessages.count > 0) {
                              
-                             if ([strongSelf.multicastDelegate
-                                  respondsToSelector:@selector(chatService:didAddMessagesToMemoryStorage:forDialogID:)]) {
-                                 [strongSelf.multicastDelegate chatService:strongSelf
-                                             didAddMessagesToMemoryStorage:[newMessages copy]
-                                                               forDialogID:chatDialogID];
+                             if ([strongSelf.multicastDelegate respondsToSelector:@selector(chatService:didAddMessagesToMemoryStorage:forDialogID:)]) {
+                                 [strongSelf.multicastDelegate chatService:strongSelf didAddMessagesToMemoryStorage:[newMessages copy] forDialogID:chatDialogID];
                              }
                          }
                          
                          if (existentMessages.count > 0) {
                              
-                             if ([strongSelf.multicastDelegate
-                                  respondsToSelector:@selector(chatService:didUpdateMessages:forDialogID:)]) {
-                                 [strongSelf.multicastDelegate chatService:strongSelf
-                                                         didUpdateMessages:[existentMessages copy]
-                                                               forDialogID:chatDialogID];
+                             if ([strongSelf.multicastDelegate respondsToSelector:@selector(chatService:didUpdateMessages:forDialogID:)]) {
+                                 [strongSelf.multicastDelegate chatService:strongSelf didUpdateMessages:[existentMessages copy] forDialogID:chatDialogID];
                              }
                          }
                      }
@@ -1085,6 +1067,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
                  
                  if (lastMessage == nil // if last message is not existent, loading only determined amount of messages
                      || numberOfMessages < page.limit) {
+                     
                      cancel = YES;
                  }
                  
@@ -1093,6 +1076,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
                  }
                  
                  if (!cancel) {
+                     
                      t_request(page, parameters);
                  }
                  else {
@@ -1132,11 +1116,10 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     });
 }
 
-- (void)earlierMessagesWithChatDialogID:(NSString *)chatDialogID
-                             completion:(void(^)(QBResponse *response,
-                                                 NSArray<QBChatMessage *> *messages))completion {
+- (void)earlierMessagesWithChatDialogID:(NSString *)chatDialogID completion:(void(^)(QBResponse *response, NSArray<QBChatMessage *> *messages))completion {
     
     if ([self.messagesMemoryStorage isEmptyForDialogID:chatDialogID]) {
+        
         [self messagesWithChatDialogID:chatDialogID completion:completion];
         
         return;
@@ -1152,46 +1135,41 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     
     __weak __typeof(self) weakSelf = self;
     
-    [QBRequest messagesWithDialogID:chatDialogID
-                    extendedRequest:extendedRequest
-                            forPage:page
-                       successBlock:^(QBResponse *response,
-                                      NSArray *messages,
-                                      QBResponsePage *page)
-     {
-         if ([messages count] > 0) {
-             
-             [weakSelf.messagesMemoryStorage addMessages:messages forDialogID:chatDialogID];
-             
-             if ([weakSelf.multicastDelegate respondsToSelector:@selector(chatService:didAddMessagesToMemoryStorage:forDialogID:)]) {
-                 [weakSelf.multicastDelegate chatService:weakSelf didAddMessagesToMemoryStorage:messages forDialogID:chatDialogID];
-             }
-         }
-         
-         if (completion) {
-             completion(response, messages);
-         }
-         
-     } errorBlock:^(QBResponse *response) {
-         
-         // case where we may have deleted dialog from another device
-         if( response.status != QBResponseStatusCodeNotFound ) {
-             [weakSelf.serviceManager handleErrorResponse:response];
-         }
-         
-         if (completion) {
-             completion(response, nil);
-         }
-     }];
+    [QBRequest messagesWithDialogID:chatDialogID extendedRequest:extendedRequest forPage:page successBlock:^(QBResponse *response, NSArray *messages, QBResponsePage *page) {
+        
+        if ([messages count] > 0) {
+            
+            [weakSelf.messagesMemoryStorage addMessages:messages forDialogID:chatDialogID];
+            
+            if ([weakSelf.multicastDelegate respondsToSelector:@selector(chatService:didAddMessagesToMemoryStorage:forDialogID:)]) {
+                [weakSelf.multicastDelegate chatService:weakSelf didAddMessagesToMemoryStorage:messages forDialogID:chatDialogID];
+            }
+        }
+        
+        if (completion) {
+            completion(response, messages);
+        }
+        
+    } errorBlock:^(QBResponse *response) {
+        
+        // case where we may have deleted dialog from another device
+        if( response.status != QBResponseStatusCodeNotFound ) {
+            [weakSelf.serviceManager handleErrorResponse:response];
+        }
+        
+        if (completion) {
+            completion(response, nil);
+        }
+        
+    }];
 }
 
-//MARK: - Fetch dialogs
+#pragma mark - Fetch dialogs
 
 - (void)fetchDialogWithID:(NSString *)dialogID completion:(void (^)(QBChatDialog *dialog))completion {
     
     // checking memory storage for dialog with specific id
     QBChatDialog *dialogFromMemoryStorage = [self.dialogsMemoryStorage chatDialogWithID:dialogID];
-    
     if (dialogFromMemoryStorage) {
         
         if (completion) {
@@ -1223,35 +1201,26 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
 - (void)loadDialogWithID:(NSString *)dialogID completion:(void (^)(QBChatDialog *loadedDialog))completion {
     
+    __weak __typeof(self)weakSelf = self;
     QBResponsePage *responsePage = [QBResponsePage responsePageWithLimit:1 skip:0];
     NSMutableDictionary *extendedRequest = @{@"_id":dialogID}.mutableCopy;
     
     [QBRequest dialogsForPage:responsePage extendedRequest:extendedRequest
-                 successBlock:^(QBResponse *response,
-                                NSArray<QBChatDialog *> *dialogs,
-                                NSSet<NSNumber *> *dialogsUsersIDs,
-                                QBResponsePage *page)
+                 successBlock:^(QBResponse *response, NSArray *dialogObjects, NSSet *dialogsUsersIDs, QBResponsePage *page)
      {
-         QBChatDialog *dialog = dialogs.firstObject;
-         
-         if (dialog) {
+         if ([dialogObjects firstObject] != nil) {
              
-             __weak __typeof(self)weakSelf = self;
-             [weakSelf.dialogsMemoryStorage addChatDialog:dialog
-                                                  andJoin:self.isAutoJoinEnabled
-                                               completion:^(QBChatDialog *addedDialog,
-                                                            NSError *error)
-              {
-                  if ([weakSelf.multicastDelegate
-                       respondsToSelector:@selector(chatService:didAddChatDialogToMemoryStorage:)]) {
-                      [weakSelf.multicastDelegate chatService:weakSelf
-                              didAddChatDialogToMemoryStorage:addedDialog];
-                  }
-                  
-                  if (completion) {
-                      completion(addedDialog);
-                  }
-              }];
+             [weakSelf.dialogsMemoryStorage addChatDialog:[dialogObjects firstObject]
+                                                  andJoin:weakSelf.isAutoJoinEnabled
+                                               completion:nil];
+             
+             if ([weakSelf.multicastDelegate respondsToSelector:@selector(chatService:didAddChatDialogToMemoryStorage:)]) {
+                 [weakSelf.multicastDelegate chatService:weakSelf didAddChatDialogToMemoryStorage:[dialogObjects firstObject]];
+             }
+         }
+         
+         if (completion) {
+             completion([dialogObjects firstObject]);
          }
          
      } errorBlock:^(QBResponse *response) {
@@ -1264,8 +1233,8 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
 - (void)fetchDialogsUpdatedFromDate:(NSDate *)date andPageLimit:(NSUInteger)limit
                      iterationBlock:(void (^)(QBResponse *response, NSArray<QBChatDialog *> *dialogObjects, NSSet<NSNumber *> *dialogsUsersIDs, BOOL *stop))iteration
-                    completionBlock:(void (^)(QBResponse *response))completion {
-    
+                    completionBlock:(void (^)(QBResponse *response))completion
+{
     NSTimeInterval timeInterval = [date timeIntervalSince1970];
     NSMutableDictionary *extendedRequest = @{@"updated_at[gte]":@(timeInterval)}.mutableCopy;
     
@@ -1285,7 +1254,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
      }];
 }
 
-//MARK: - Send messages
+#pragma mark - Send messages
 
 - (void)sendMessage:(QBChatMessage *)message
                type:(QMMessageType)type
@@ -1294,6 +1263,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
       saveToStorage:(BOOL)saveToStorage
          completion:(QBChatCompletionBlock)completion {
     
+    message.dateSent = [NSDate date];
     //Save to history
     if (saveToHistory) {
         message.saveToHistory = kChatServiceSaveToHistoryTrue;
@@ -1313,11 +1283,10 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     message.senderID = currentUser.ID;
     message.dialogID = dialog.ID;
     
-    if (message.messageType == QMMessageTypeText || message.isMediaMessage) {
-        [self.deferredQueueManager addOrUpdateMessage:message];
-    }
-    
     __weak __typeof(self)weakSelf = self;
+    
+    
+    [self.deferredQueueManager addOrUpdateMessage:message];
     
     [dialog sendMessage:message completionBlock:^(NSError *error) {
         
@@ -1325,10 +1294,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
         
         if (!error) {
             
-            if (message.messageType == QMMessageTypeText || message.isMediaMessage) {
-                [strongSelf.deferredQueueManager removeMessage:message
-                                               andCallDelegate:NO];
-            }
+            [self.deferredQueueManager removeMessage:message];
             
             if (saveToStorage) {
                 // there is a case when message that was returned from server (Group dialogs)
@@ -1349,6 +1315,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
                     if ([strongSelf.multicastDelegate respondsToSelector:@selector(chatService:didUpdateMessage:forDialogID:)]) {
                         [strongSelf.multicastDelegate chatService:strongSelf didUpdateMessage:message forDialogID:dialog.ID];
                     }
+                    
                 }
                 
                 [strongSelf updateLastMessageParamsForChatDialog:dialog withMessage:message];
@@ -1361,9 +1328,9 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
             }
         }
         else {
-            if (message.messageType == QMMessageTypeText || message.isMediaMessage) {
-                [strongSelf.deferredQueueManager addOrUpdateMessage:message];
-            }
+            
+            [strongSelf.deferredQueueManager addOrUpdateMessage:message];
+            
         }
         
         if (completion) {
@@ -1372,8 +1339,9 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     }];
 }
 
-//MARK: -
-//MARK: QMDeferredQueueManagerDelegate
+
+#pragma mark -
+#pragma mark QMDeferredQueueManagerDelegate
 
 - (void)deferredQueueManager:(QMDeferredQueueManager *)queueManager
     performActionWithMessage:(QBChatMessage *)message
@@ -1381,74 +1349,12 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     
     QBChatDialog *dialog =
     [self.dialogsMemoryStorage chatDialogWithID:message.dialogID];
-    message.dateSent = [NSDate date];
-    if (message.isMediaMessage && !message.isLocationMessage) {
-        [self sendAttachmentMessage:message
-                           toDialog:dialog
-                     withAttachment:message.attachments.firstObject
-                         completion:completion];
-    }
-    else {
-        [self sendMessage:message
-                 toDialog:dialog
-            saveToHistory:message.saveToHistory.integerValue
-            saveToStorage:YES
-               completion:completion];
-    }
-}
-
-- (void)deferredQueueManager:(QMDeferredQueueManager *)queueManager
-        didAddMessageLocally:(QBChatMessage *)addedMessage {
     
-    [self.messagesMemoryStorage addMessage:addedMessage forDialogID:addedMessage.ID];
-    
-    if ([self.multicastDelegate respondsToSelector:@selector(chatService:
-                                                             didAddMessageToMemoryStorage:
-                                                             forDialogID:)]) {
-        [self.multicastDelegate chatService:self
-               didAddMessageToMemoryStorage:addedMessage
-                                forDialogID:addedMessage.dialogID];
-    }
-}
-
-- (void)deferredQueueManager:(QMDeferredQueueManager *)queueManager
-     didUpdateMessageLocally:(QBChatMessage *)addedMessage {
-    
-    [self.messagesMemoryStorage updateMessage:addedMessage];
-    
-    if ([self.multicastDelegate respondsToSelector:@selector(chatService:
-                                                             didUpdateMessage:
-                                                             forDialogID:)]) {
-        [self.multicastDelegate chatService:self
-                           didUpdateMessage:addedMessage
-                                forDialogID:addedMessage.dialogID];
-    }
-}
-
-- (void)deferredQueueManager:(QMDeferredQueueManager *)queueManager
-     didRemoveMessageLocally:(nonnull QBChatMessage *)removedMessage {
-    
-    [self.messagesMemoryStorage deleteMessage:removedMessage];
-    
-    if ([self.multicastDelegate respondsToSelector:@selector(chatService:
-                                                             didDeleteMessageFromMemoryStorage:
-                                                             forDialogID:)]) {
-        [self.multicastDelegate chatService:self
-                           didDeleteMessageFromMemoryStorage:removedMessage
-                                forDialogID:removedMessage.dialogID];
-    }
-}
-
-
-- (void)deferredQueueManager:(QMDeferredQueueManager *)queueManager
-      didUpdateMessageStatus:(QMMessageStatus)status
-                     message:(QBChatMessage *)message {
-    
-    [self.messagesMemoryStorage updateMessage:message];
-    
-    if ([self.multicastDelegate respondsToSelector:@selector(chatService:didUpdateMessage:forDialogID:)]) {
-        [self.multicastDelegate chatService:self didUpdateMessage:message forDialogID:message.dialogID];
-    }
+    [self sendMessage:message
+             toDialog:dialog
+        saveToHistory:message.saveToHistory.integerValue
+        saveToStorage:YES
+           completion:completion];
 }
 
 - (void)sendMessage:(QBChatMessage *)message
@@ -1474,15 +1380,31 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
       saveToStorage:(BOOL)saveToStorage
          completion:(QBChatCompletionBlock)completion {
     
-    NSAssert(message.messageType == QMMessageTypeText,
-             @"You can only send text messages with this method.");
+    NSAssert(message.messageType == QMMessageTypeText, @"You can only send text messages with this method.");
     
-    [self sendMessage:message
-                 type:QMMessageTypeText
+    [self sendMessage:message type:QMMessageTypeText
              toDialog:dialog
         saveToHistory:saveToHistory
         saveToStorage:saveToStorage
            completion:completion];
+}
+
+- (void)sendAttachmentMessage:(QBChatMessage *)attachmentMessage
+                     toDialog:(QBChatDialog *)dialog
+          withAttachmentImage:(UIImage *)image
+                   completion:(QBChatCompletionBlock)completion
+{
+    
+    [self.chatAttachmentService uploadAndSendAttachmentMessage:attachmentMessage
+                                                      toDialog:dialog
+                                               withChatService:self
+                                             withAttachedImage:image
+                                                    completion:^(NSError *error)
+     {
+         if (completion) {
+             completion(error);
+         }
+     }];
 }
 
 - (void)sendAttachmentMessage:(QBChatMessage *)attachmentMessage
@@ -1497,20 +1419,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
                                                     completion:completion];
 }
 
-- (void)sendAttachmentMessage:(QBChatMessage *)attachmentMessage
-                     toDialog:(QBChatDialog *)dialog
-          withAttachmentImage:(UIImage *)image
-                   completion:(QBChatCompletionBlock)completion {
-    
-    QBChatAttachment *attachment = [QBChatAttachment imageAttachmentWithImage:image];
-    
-    [self sendAttachmentMessage:attachmentMessage
-                       toDialog:dialog
-                 withAttachment:attachment
-                     completion:completion];
-}
-
-//MARK: - mark as delivered
+#pragma mark - mark as delivered
 
 - (void)markMessageAsDelivered:(QBChatMessage *)message
                     completion:(QBChatCompletionBlock)completion {
@@ -1564,22 +1473,17 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     });
 }
 
-//MARK: - read messages
+#pragma mark - read messages
 
 - (void)readMessage:(QBChatMessage *)message
          completion:(QBChatCompletionBlock)completion {
     
-    if (!message.dialogID) {
-        return;
-    }
     NSAssert(message.dialogID != nil, @"Message must have a dialog ID!");
     
     [self readMessages:@[message] forDialogID:message.dialogID completion:completion];
 }
 
-- (void)readMessages:(NSArray *)messages
-         forDialogID:(NSString *)dialogID
-          completion:(QBChatCompletionBlock)completion {
+- (void)readMessages:(NSArray *)messages forDialogID:(NSString *)dialogID completion:(QBChatCompletionBlock)completion {
     
     NSAssert(dialogID != nil, @"dialogID can't be nil");
     
@@ -1587,21 +1491,26 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     
     NSAssert(chatDialogToUpdate != nil, @"Dialog wasn't found in memory storage!");
     
-    NSMutableArray<QBChatMessage *>*unreadedMessages = [NSMutableArray arrayWithCapacity:messages.count];
+    NSMutableArray * unreadedMessages = [NSMutableArray array];
     
-    for (QBChatMessage *message in messages) {
+    for (QBChatMessage * message in messages) {
         
-        if ([message.readIDs containsObject:@(self.serviceManager.currentUser.ID)]
-            || [self.readableMessages containsObject:message.ID]) {
+        if ([message.readIDs containsObject:@(self.serviceManager.currentUser.ID)] || [self.messagesToRead containsObject:message.ID]) {
             
             continue;
         }
         else {
+            
             [unreadedMessages addObject:message];
         }
     }
     
     if (unreadedMessages.count == 0) {
+        
+        if (completion) {
+            completion(nil);
+        }
+        
         return;
     }
     
@@ -1615,7 +1524,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
         
         NSAssert([message.dialogID isEqualToString:dialogID], @"Message is from incorrect dialog.");
         
-        [self.readableMessages addObject:message.ID];
+        [self.messagesToRead addObject:message.ID];
         
         message.markable = YES;
         
@@ -1632,13 +1541,12 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
                 }
                 
                 // updating dialog in cache
-                
-                chatDialogToUpdate.updatedAt = [NSDate date];
-                if ([strongSelf.multicastDelegate
-                     respondsToSelector:@selector(chatService:didUpdateChatDialogInMemoryStorage:)]) {
+                if (chatDialogToUpdate != nil) {
                     
-                    [strongSelf.multicastDelegate chatService:strongSelf
-                           didUpdateChatDialogInMemoryStorage:chatDialogToUpdate];
+                    if ([strongSelf.multicastDelegate respondsToSelector:@selector(chatService:didUpdateChatDialogInMemoryStorage:)]) {
+                        [strongSelf.multicastDelegate chatService:strongSelf
+                               didUpdateChatDialogInMemoryStorage:chatDialogToUpdate];
+                    }
                 }
                 
                 // updating message in memory storage
@@ -1647,7 +1555,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
                 [updatedMessages addObject:message];
             }
             
-            [strongSelf.readableMessages removeObject:message.ID];
+            [strongSelf.messagesToRead removeObject:message.ID];
             
             dispatch_group_leave(readGroup);
         }];
@@ -1659,8 +1567,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
         
         if (updatedMessages.count) {
             
-            if ([strongSelf.multicastDelegate respondsToSelector:@selector(chatService:didUpdateMessages:
-                                                                           forDialogID:)]) {
+            if ([strongSelf.multicastDelegate respondsToSelector:@selector(chatService:didUpdateMessages:forDialogID:)]) {
                 [strongSelf.multicastDelegate chatService:strongSelf
                                         didUpdateMessages:updatedMessages.copy
                                               forDialogID:dialogID];
@@ -1673,7 +1580,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     });
 }
 
-//MARK: - QMMemoryStorageProtocol
+#pragma mark - QMMemoryStorageProtocol
 
 - (void)free {
     
@@ -1681,12 +1588,10 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     [self.lastMessagesLoadDate removeAllObjects];
     [self.messagesMemoryStorage free];
     [self.dialogsMemoryStorage free];
-    [self.readableMessages removeAllObjects];
-    
-    [self.deferredQueueManager free];
+    [self.messagesToRead removeAllObjects];
 }
 
-//MARK: - System messages
+#pragma mark - System messages
 
 - (void)sendSystemMessageAboutAddingToDialog:(QBChatDialog *)chatDialog
                                   toUsersIDs:(NSArray *)usersIDs
@@ -1701,20 +1606,18 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
             continue;
         }
         
-        QBChatMessage *privateMessage =
-        [self systemMessageWithRecipientID:[occupantID integerValue]
-                                  withText:text
-                                parameters:nil];
+        QBChatMessage *privateMessage = [self systemMessageWithRecipientID:[occupantID integerValue]
+                                                                  withText:text
+                                                                parameters:nil];
         
         privateMessage.messageType = QMMessageTypeCreateGroupDialog;
         [privateMessage updateCustomParametersWithDialog:chatDialog];
         
         dispatch_group_enter(notifyGroup);
-        [[QBChat instance] sendSystemMessage:privateMessage
-                                  completion:^(NSError *error)
-         {
-             dispatch_group_leave(notifyGroup);
-         }];
+        [[QBChat instance] sendSystemMessage:privateMessage completion:^(NSError *error) {
+            
+            dispatch_group_leave(notifyGroup);
+        }];
     }
     
     dispatch_group_notify(notifyGroup, dispatch_get_main_queue(), ^{
@@ -1728,26 +1631,20 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
 - (void)sendMessageAboutAcceptingContactRequest:(BOOL)accept
                                    toOpponentID:(NSUInteger)opponentID
-                                     completion:(QBChatCompletionBlock)completion {
-    
+                                     completion:(QBChatCompletionBlock)completion
+{
     QBChatMessage *message = [QBChatMessage message];
     message.text = @"Contact request";
     
-    QMMessageType messageType =
-    accept ? QMMessageTypeAcceptContactRequest : QMMessageTypeRejectContactRequest;
+    QMMessageType messageType = accept ? QMMessageTypeAcceptContactRequest : QMMessageTypeRejectContactRequest;
     
     QBChatDialog *p2pDialog = [self.dialogsMemoryStorage privateChatDialogWithOpponentID:opponentID];
     NSParameterAssert(p2pDialog);
     
-    [self sendMessage:message
-                 type:messageType
-             toDialog:p2pDialog
-        saveToHistory:YES
-        saveToStorage:YES
-           completion:completion];
+    [self sendMessage:message type:messageType toDialog:p2pDialog saveToHistory:YES saveToStorage:YES completion:completion];
 }
 
-//MARK: - Notification messages
+#pragma mark - Notification messages
 
 - (void)sendNotificationMessageAboutAddingOccupants:(NSArray *)occupantsIDs
                                            toDialog:(QBChatDialog *)chatDialog
@@ -1772,17 +1669,15 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
 - (void)sendNotificationMessageAboutLeavingDialog:(QBChatDialog *)chatDialog
                              withNotificationText:(NSString *)notificationText
-                                       completion:(QBChatCompletionBlock)completion {
-    
-    QBChatMessage *notificationMessage =
-    [self notificationMessageAboutUpdateDialogWithType:QMDialogUpdateTypeOccupants
-                                      notificationText:notificationText
-                                       dialogUpdatedAt:[NSDate date]];
+                                       completion:(QBChatCompletionBlock)completion
+{
+    QBChatMessage *notificationMessage = [self notificationMessageAboutUpdateDialogWithType:QMDialogUpdateTypeOccupants
+                                                                           notificationText:notificationText
+                                                                            dialogUpdatedAt:[NSDate date]];
     
     notificationMessage.deletedOccupantsIDs = @[@(self.serviceManager.currentUser.ID)];
     
-    NSMutableArray<NSNumber *>  *occupantsWithoutCurrentUser =
-    [NSMutableArray arrayWithArray:chatDialog.occupantIDs];
+    NSMutableArray *occupantsWithoutCurrentUser = [NSMutableArray arrayWithArray:chatDialog.occupantIDs];
     [occupantsWithoutCurrentUser removeObject:@(self.serviceManager.currentUser.ID)];
     
     notificationMessage.currentOccupantsIDs = [occupantsWithoutCurrentUser copy];
@@ -1798,6 +1693,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 - (void)sendNotificationMessageAboutChangingDialogPhoto:(QBChatDialog *)chatDialog
                                    withNotificationText:(NSString *)notificationText
                                              completion:(QBChatCompletionBlock)completion {
+    
     QBChatMessage *notificationMessage =
     [self notificationMessageAboutUpdateDialogWithType:QMDialogUpdateTypePhoto
                                       notificationText:notificationText
@@ -1815,7 +1711,8 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
 - (void)sendNotificationMessageAboutChangingDialogName:(QBChatDialog *)chatDialog
                                   withNotificationText:(NSString *)notificationText
-                                            completion:(QBChatCompletionBlock)completion {
+                                            completion:(QBChatCompletionBlock)completion
+{
     QBChatMessage *notificationMessage =
     [self notificationMessageAboutUpdateDialogWithType:QMDialogUpdateTypeName
                                       notificationText:notificationText
@@ -1831,7 +1728,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
            completion:completion];
 }
 
-//MARK: - Utilites and helpers
+#pragma mark - Utilites and helpers
 
 - (QBChatMessage *)privateMessageWithRecipientID:(NSUInteger)recipientID
                                             text:(NSString *)text
@@ -1841,6 +1738,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     message.recipientID = recipientID;
     message.senderID = self.serviceManager.currentUser.ID;
     message.text = text;
+    message.dateSent = [NSDate date];
     
     if (save) {
         message.saveToHistory = kChatServiceSaveToHistoryTrue;
@@ -1892,8 +1790,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
 
 - (NSDictionary *)parametersForMessagesUsingDialogID:(NSString *)chatDialogID {
     
-    NSMutableDictionary *parameters = [@{@"sort_desc" : @"date_sent",
-                                         @"mark_as_read" : @"0"} mutableCopy];
+    NSMutableDictionary *parameters = [@{@"sort_desc" : @"date_sent"} mutableCopy];
     
     NSDate *lastMessagesLoadDate = self.lastMessagesLoadDate[chatDialogID];
     QBChatMessage *lastMessage = [self.messagesMemoryStorage lastMessageFromDialogID:chatDialogID];
@@ -1902,43 +1799,9 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
         lastMessagesLoadDate = lastMessage.dateSent;
     }
     
-    parameters[@"date_sent[gt]"] = @([lastMessagesLoadDate timeIntervalSince1970]);
+    parameters[@"date_sent[gte]"] = @([lastMessagesLoadDate timeIntervalSince1970]);
     
     return [parameters copy];
-}
-
-- (void)storeService:(QMAttachmentStoreService *)storeService
- didRemoveAttachment:(QBChatAttachment *)attachment
-           messageID:(NSString *)messageID
-            dialogID:(NSString *)dialogID {
-    
-    QBChatMessage *message = [self.messagesMemoryStorage messageWithID:messageID fromDialogID:dialogID];
-    
-    if (message) {
-        
-        [self.messagesMemoryStorage updateMessage:message];
-        
-        if ([self.multicastDelegate respondsToSelector:@selector(chatService:didUpdateMessage:forDialogID:)]) {
-            [self.multicastDelegate chatService:self didUpdateMessage:message forDialogID:dialogID];
-        }
-    }
-}
-
-- (void)storeService:(QMAttachmentStoreService *)storeService
- didUpdateAttachment:(QBChatAttachment *)attachment
-           messageID:(NSString *)messageID
-            dialogID:(NSString *)dialogID {
-    
-    QBChatMessage *message = [self.messagesMemoryStorage messageWithID:messageID fromDialogID:dialogID];
-    
-    if (message) {
-        message.attachments = @[attachment];
-        [self.messagesMemoryStorage updateMessage:message];
-        
-        if ([self.multicastDelegate respondsToSelector:@selector(chatService:didUpdateMessage:forDialogID:)]) {
-            [self.multicastDelegate chatService:self didUpdateMessage:message forDialogID:dialogID];
-        }
-    }
 }
 
 @end

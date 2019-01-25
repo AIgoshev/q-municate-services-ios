@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface QMContactListCache : QMDBStorage
 
-//MARK: - Singleton
+#pragma mark - Singleton
 
 /**
  *  Chat cache singleton
@@ -22,7 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 + (nullable QMContactListCache *)instance;
 
-//MARK: - Configure store
+#pragma mark - Configure store
 
 /**
  *  Setup QMContactListCache stake wit store name
@@ -30,6 +30,7 @@ NS_ASSUME_NONNULL_BEGIN
  *  @param storeName Store name
  */
 + (void)setupDBWithStoreNamed:(NSString *)storeName;
++ (void)setupDBWithStoreNamed:(NSString *)storeName applicationGroupIdentifier:(nullable NSString *)appGroupIdentifier;
 /**
  *  Clean clean chat cache with store name
  *
@@ -37,10 +38,10 @@ NS_ASSUME_NONNULL_BEGIN
  */
 + (void)cleanDBWithStoreName:(NSString *)name;
 
-//MARK: -
-//MARK: Dialogs
-//MARK: -
-//MARK: Insert / Update / Delete contact items
+#pragma mark -
+#pragma mark Dialogs
+#pragma mark -
+#pragma mark Insert / Update / Delete contact items
 
 /**
  *  Insert/Update QBContactListItem in cache
@@ -85,7 +86,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)truncateAll;
 
-//MARK: Fetch ContactList operations
+#pragma mark Fetch ContactList operations
 
 /**
  *  Fetch all contact list items
@@ -93,7 +94,6 @@ NS_ASSUME_NONNULL_BEGIN
  *  @param completion Completion block that is called after the fetch has completed. Returns an array of QBContactListItem instances
  */
 - (void)contactListItems:(nullable void(^)(NSArray<QBContactListItem *> *contactListItems))completion;
-
 
 /**
  *  Fetch all contact list items (Fetch in Main Queue context)

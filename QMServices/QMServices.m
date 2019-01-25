@@ -7,14 +7,9 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "QMServicesManager.h"
 
 @interface QMServices_lib : NSObject
 @end
 
 @implementation QMServices_lib
-
-- (void)main {
-    [QMServicesManager instance];
-}
 @end

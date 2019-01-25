@@ -19,23 +19,23 @@ NS_ASSUME_NONNULL_BEGIN
 @required
 
 /**
- *  Current user
+ *  Get user from current session
  *
  *  @return QBUUser instance
  */
-@property (nonatomic, strong, readonly) QBUUser *currentUser;
+- (nullable QBUUser *)currentUser;
 
 /**
  *  Check is current session is authorized
  *
  *  @return YES if authorized
  */
-@property (nonatomic, assign, readonly) BOOL isAuthorized;
+- (BOOL)isAuthorized;
 
 /**
  *  This method called when some QBReqest falling. Use this method for handling errors, like show alert with error.
  *  
- *  @param response QBResponse instance. See response.error for falling inforamtion.
+ *  @param QBResponse instance. See response.error for falling inforamtion.
  */
 - (void)handleErrorResponse:(QBResponse *)response;
 

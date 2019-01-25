@@ -10,14 +10,16 @@
 
 // NSLog is unavailable for QMServices project
 // Use QMSLog instead.
+FOUNDATION_EXPORT void NSLog(NSString *format, ...) NS_UNAVAILABLE;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
     
 void QMSLogSetEnabled(BOOL enabled);
-BOOL QMSLogEnabled(void);
+BOOL QMSLogEnabled();
 void QMSLog(NSString *format, ...);
+void QMSLogv(NSString *format, va_list args);
     
 #ifdef __cplusplus
 }

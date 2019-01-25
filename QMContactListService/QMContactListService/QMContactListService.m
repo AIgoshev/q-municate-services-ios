@@ -40,14 +40,14 @@ static inline BOOL isContactListEmpty(QBContactList *contactList) {
     self = [super initWithServiceManager:serviceManager];
     if (self) {
         
-        _cacheDataSource = cacheDataSource;
+        self.cacheDataSource = cacheDataSource;
         [self loadCachedData];
     }
     
     return self;
 }
 
-//MARK: - Service will start
+#pragma mark - Service will start
 
 - (void)serviceWillStart {
     
@@ -74,7 +74,7 @@ static inline BOOL isContactListEmpty(QBContactList *contactList) {
     }
 }
 
-//MARK: - Add Remove multicaste delegate
+#pragma mark - Add Remove multicaste delegate
 
 - (void)addDelegate:(id <QMContactListServiceDelegate>)delegate {
     
@@ -86,7 +86,7 @@ static inline BOOL isContactListEmpty(QBContactList *contactList) {
     [self.multicastDelegate removeDelegate:delegate];
 }
 
-//MARK: - QBChatDelegate
+#pragma mark - QBChatDelegate
 
 - (void)chatContactListDidChange:(QBContactList *)contactList {
     
@@ -100,6 +100,7 @@ static inline BOOL isContactListEmpty(QBContactList *contactList) {
     [self.contactListMemoryStorage updateWithContactList:contactList];
     
     if ([self.multicastDelegate respondsToSelector:@selector(contactListService:contactListDidChange:)]) {
+        
         [self.multicastDelegate contactListService:self contactListDidChange:contactList];
     }
 }
@@ -107,11 +108,12 @@ static inline BOOL isContactListEmpty(QBContactList *contactList) {
 - (void)chatDidReceiveContactItemActivity:(NSUInteger)userID isOnline:(BOOL)isOnline status:(NSString *)status {
     
     if ([self.multicastDelegate respondsToSelector:@selector(contactListService:didReceiveContactItemActivity:isOnline:status:)]) {
+        
         [self.multicastDelegate contactListService:self didReceiveContactItemActivity:userID isOnline:isOnline status:status];
     }
 }
 
-//MARK: - ContactList Request
+#pragma mark - ContactList Request
 
 - (void)addUserToContactListRequest:(QBUUser *)user completion:(void(^)(BOOL success))completion {
     
@@ -170,7 +172,7 @@ static inline BOOL isContactListEmpty(QBContactList *contactList) {
     }];
 }
 
-//MARK: - QMUsersMemoryStorageDelegate
+#pragma mark - QMUsersMemoryStorageDelegate
 
 - (NSArray *)contactsIDS {
     
