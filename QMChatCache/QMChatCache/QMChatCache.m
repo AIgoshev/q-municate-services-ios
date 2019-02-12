@@ -287,12 +287,22 @@ applicationGroupIdentifier:(NSString *)appGroupIdentifier {
     }
 }
 
-- (void)deleteMessages:(NSArray *)messages inContext:(NSManagedObjectContext *)context {
+- (void)deleteMessages:(NSArray *)messages
+            completion:(dispatch_block_t)completion {
     
-    for (QBChatMessage *QBChatMessage in messages) {
+    [self save:^(NSManagedObjectContext *ctx) {
         
-        [self deleteMessage:QBChatMessage inContext:context];
-    }
+        for (QBChatMessage *message in messages) {
+            
+            QMCDMessage *messageToDelete =
+            [QMCDMessage QM_findFirstByAttribute:@"messageID"
+                                       withValue:message.ID
+                                       inContext:ctx];
+            
+            [messageToDelete QM_deleteEntityInContext:ctx];
+        }
+        
+    } finish:completion];
 }
 
 - (void)updateMessages:(NSArray *)messages inContext:(NSManagedObjectContext *)context {
