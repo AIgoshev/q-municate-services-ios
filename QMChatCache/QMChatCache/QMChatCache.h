@@ -179,7 +179,7 @@ NS_ASSUME_NONNULL_BEGIN
  *  @param dialogID   dialog identifier
  *  @param completion Completion block that is called after the delete operation has completed.
  */
-- (void)deleteMessageWithDialogID:(NSString *)dialogID completion:(nullable dispatch_block_t)completion;
+- (void)deleteMessagesWithDialogID:(NSString *)dialogID completion:(nullable dispatch_block_t)completion;
 
 /**
  *  Delete all messages
