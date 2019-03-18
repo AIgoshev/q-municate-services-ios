@@ -198,6 +198,7 @@ applicationGroupIdentifier:(NSString *)appGroupIdentifier {
     [self messagesWithPredicate:IS(@"dialogID", dialogId) sortedBy:sortTerm ascending:ascending completion:completion];
 }
 
+//this calls
 - (void)messagesWithPredicate:(NSPredicate *)predicate
                      sortedBy:(NSString *)sortTerm
                     ascending:(BOOL)ascending
@@ -223,6 +224,7 @@ applicationGroupIdentifier:(NSString *)appGroupIdentifier {
 
 - (NSArray<QBChatMessage *> *)messagesWithDialogId:(NSString *)dialogId
                                           sortedBy:(NSString *)sortTerm
+                                          offset:(NSUInteger)offset
                                          ascending:(BOOL)ascending {
     
     __block NSArray<QBChatMessage *> *result = nil;
@@ -233,7 +235,7 @@ applicationGroupIdentifier:(NSString *)appGroupIdentifier {
         [[QMCDMessage QM_findAllSortedBy:sortTerm
                                ascending:ascending
                            withPredicate:IS(@"dialogID", dialogId)
-                                  offset:0
+                                  offset:offset
                                    limit:self.messagesLimitPerDialog
                                inContext:ctx] toQBChatMessages];
     }];

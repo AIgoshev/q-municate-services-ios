@@ -320,6 +320,17 @@
     NSArray<QBChatMessage *> *result =
     [QMChatCache.instance messagesWithDialogId:dialogID
                                       sortedBy:QMCDMessageAttributes.messageID
+                                        offset:0
+                                     ascending:NO];
+    block(result);
+}
+
+- (void)cachedMessagesWithDialogID:(NSString *)dialogID offset:(NSInteger) offset block:(QMCacheCollection)block {
+    
+    NSArray<QBChatMessage *> *result =
+    [QMChatCache.instance messagesWithDialogId:dialogID
+                                      sortedBy:QMCDMessageAttributes.messageID
+                                        offset:offset
                                      ascending:NO];
     block(result);
 }

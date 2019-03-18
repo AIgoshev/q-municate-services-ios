@@ -359,6 +359,38 @@ static NSString *const kQMChatServiceDomain = @"com.q-municate.chatservice";
     return source.task;
 }
 
+- (void)loadEarlierCachedMessagesWithChatDialogID:(NSString *)chatDialogID offset: (NSInteger) offset completion: (void (^)(NSArray*)) completion {
+    if ([self.loadedAllMessages[chatDialogID] isEqualToNumber: kQMLoadedAllMessages]) {
+        if (completion) {
+            completion(@[]);
+        }
+    } else {
+        if ([self.cacheDataSource respondsToSelector:@selector(cachedMessagesWithDialogID:block:)]) {
+            
+            __weak __typeof(self)weakSelf = self;
+            [self.cacheDataSource cachedMessagesWithDialogID:chatDialogID offset: offset block:^(NSArray *collection) {
+                
+                if (collection.count > 0) {
+                    
+                    if ([weakSelf.multicastDelegate respondsToSelector:@selector(chatService:didLoadMessagesFromCache:forDialogID:)]) {
+                        [weakSelf.multicastDelegate chatService:weakSelf didLoadMessagesFromCache:collection forDialogID:chatDialogID];
+                    }
+                    
+                    [weakSelf.messagesMemoryStorage addMessages: collection forDialogID: chatDialogID];
+                    
+                    if ([weakSelf.multicastDelegate respondsToSelector:@selector(chatService:didAddMessagesToMemoryStorage:forDialogID:)]) {
+                        [weakSelf.multicastDelegate chatService:weakSelf didAddMessagesToMemoryStorage:collection forDialogID:chatDialogID];
+                    }
+                }
+                
+                if (completion) {
+                    completion(collection);
+                }
+            }];
+        }
+    }
+}
+
 - (BFTask *)loadEarlierMessagesWithChatDialogID:(NSString *)chatDialogID {
     
     if ([self.loadedAllMessages[chatDialogID] isEqualToNumber: kQMLoadedAllMessages]) return [BFTask taskWithResult:@[]];

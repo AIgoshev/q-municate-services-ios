@@ -10,6 +10,7 @@
 #import "QBChatMessage+QMCustomParameters.h"
 #import "QMSLog.h"
 
+
 #import "QBChatAttachment+QMFactory.h"
 #import "QMAttachmentStoreService.h"
 #import "QMAttachmentContentService.h"
@@ -58,6 +59,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
         _loadedAllMessages = [NSMutableDictionary dictionary];
         _lastMessagesLoadDate = [NSMutableDictionary dictionary];
         _messagesToRead = [NSMutableSet set];
+        _useCache = false;
         
         if (self.serviceManager.currentUser != nil) {
             [self loadCachedDialogsWithCompletion:nil];
@@ -125,12 +127,12 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     }
 }
 
-- (void)loadCachedMessagesWithDialogID:(NSString *)dialogID compleion:(void(^)())completion {
+- (void)loadCachedMessagesWithDialogID:(NSString *)dialogID offset:(NSInteger) offset compleion:(void(^)())completion {
     
     if ([self.cacheDataSource respondsToSelector:@selector(cachedMessagesWithDialogID:block:)]) {
         
         __weak __typeof(self)weakSelf = self;
-        [self.cacheDataSource cachedMessagesWithDialogID:dialogID block:^(NSArray *collection) {
+        [self.cacheDataSource cachedMessagesWithDialogID:dialogID offset: offset block:^(NSArray *collection) {
             
             if (collection.count > 0) {
                 
@@ -991,12 +993,20 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
                       completion:(void (^)(QBResponse *response, NSArray<QBChatMessage *>  *messages))completion {
     
     dispatch_group_t messagesLoadGroup = dispatch_group_create();
-    if ([[self.messagesMemoryStorage messagesWithDialogID:chatDialogID] count] == 0) {
+    
+    if ([[self.messagesMemoryStorage messagesWithDialogID: chatDialogID] count] == 0) {
         
         // loading messages from cache
         dispatch_group_enter(messagesLoadGroup);
-        [self loadCachedMessagesWithDialogID:chatDialogID compleion:^{
-            
+        [self loadCachedMessagesWithDialogID:chatDialogID offset: 0 compleion:^{
+            dispatch_group_leave(messagesLoadGroup);
+        }];
+    } else if (self.useCache == true) {
+
+        NSArray<QBChatMessage *> *messages = [self.messagesMemoryStorage messagesWithDialogID: chatDialogID];
+        
+        dispatch_group_enter(messagesLoadGroup);
+        [self loadCachedMessagesWithDialogID:chatDialogID offset: messages.count compleion:^{
             dispatch_group_leave(messagesLoadGroup);
         }];
     }

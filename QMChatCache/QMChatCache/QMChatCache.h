@@ -230,6 +230,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (NSArray<QBChatMessage *> *)messagesWithDialogId:(NSString *)dialogId
                                           sortedBy:(NSString *)sortTerm
+                                            offset:(NSInteger) offset
                                          ascending:(BOOL)ascending;
 
 @end

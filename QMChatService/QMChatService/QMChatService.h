@@ -57,6 +57,8 @@ typedef NS_ENUM(NSUInteger, QMChatConnectionState) {
  */
 @property (assign, nonatomic, getter=isAutoJoinEnabled) BOOL enableAutoJoin;
 
+@property (assign, nonatomic) BOOL useCache;
+
 /**
  *  Chat messages per page with messages load methods
  */
@@ -717,6 +719,8 @@ typedef NS_ENUM(NSUInteger, QMChatConnectionState) {
  */
 - (BFTask <NSArray<QBChatMessage *> *> *)loadEarlierMessagesWithChatDialogID:(NSString *)chatDialogID;
 
+- (void)loadEarlierCachedMessagesWithChatDialogID:(NSString *)chatDialogID offset: (NSInteger) offset completion: (void (^)(NSArray*)) completion;
+
 /**
  *  Fetch dialog with identifier using Bolts.
  *
@@ -1003,6 +1007,15 @@ typedef NS_ENUM(NSUInteger, QMChatConnectionState) {
  *  @param block    Block for provide QBChatMessages collection
  */
 - (void)cachedMessagesWithDialogID:(NSString *)dialogID block:(nullable QMCacheCollection)block;
+
+/**
+ *  Is called when fetching data from local cache
+ *
+ *  @param dialogID Dialog ID
+ *  @param offset
+ *  @param block    Block for provide QBChatMessages collection
+ */
+- (void)cachedMessagesWithDialogID:(NSString *)dialogID offset:(NSInteger) offset block:(QMCacheCollection)block;
 
 @optional
 
