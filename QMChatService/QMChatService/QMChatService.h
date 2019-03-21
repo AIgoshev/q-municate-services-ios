@@ -145,6 +145,15 @@ typedef NS_ENUM(NSUInteger, QMChatConnectionState) {
                 extendedRequest:(nullable NSDictionary *)extendedRequest
                  iterationBlock:(nullable void(^)(QBResponse *response, NSArray<QBChatDialog *> * _Nullable dialogObjects, NSSet<NSNumber *> * _Nullable dialogsUsersIDs, BOOL *stop))iterationBlock
                      completion:(nullable void(^)(QBResponse *response))completion;
+/**
+ *  Retrieve chat dialogs without appying pagination
+ *
+ *  @param extendedRequest Set of request parameters. http://quickblox.com/developers/SimpleSample-chat_users-ios#Filters
+ *  @param completion Block with response dialogs instances
+ */
+- (void)allDialogsWithExtendedRequest:(NSDictionary *)extendedRequest
+                       iterationBlock:(void(^)(QBResponse *response, NSArray<QBChatDialog *>  *dialogObjects, NSSet<NSNumber *>  *dialogsUsersIDs, BOOL *stop))iterationBlock
+                           completion:(void(^)(QBResponse *response))completion;
 
 #pragma mark - Chat dialog creation
 
@@ -362,6 +371,23 @@ typedef NS_ENUM(NSUInteger, QMChatConnectionState) {
                   iterationBlock:(nullable void(^)(QBResponse *response, NSArray * _Nullable messages, BOOL *stop))iterationBlock
                       completion:(nullable void(^)(QBResponse *response, NSArray<QBChatMessage *> * _Nullable messages))completion;
 /**
+ *  Fetch messages with chat dialog id using custom extended request and allow disable pagination to fetching all messages.
+ *
+ *  @param chatDialogID     Chat dialog id
+ *  @param extendedRequest  extended parameters
+ *  @param extendedRequest  apply pagination 
+ *  @param iterationBlock   iteration block (pagination handling)
+ *  @param completion       Block with response instance and array of chat messages that were already iterated in iteration block
+ *
+ *  @discussion Pass nil or empty dictionary into extendedRequest to load only newest messages from latest message in cache.
+ */
+- (void)messagesWithChatDialogID:(NSString *)chatDialogID
+                 extendedRequest:(NSDictionary *)extendedParameters
+                 applyPagination:(BOOL) applyPagination
+                  iterationBlock:(void (^)(QBResponse *response, NSArray *messages, BOOL *stop))iterationBlock
+                      completion:(void (^)(QBResponse *response, NSArray<QBChatMessage *>  *messages))completion;
+
+/**
  *  Loads messages that are older than oldest message in cache.
  *
  *  @param chatDialogID Chat dialog identifier
@@ -576,6 +602,18 @@ typedef NS_ENUM(NSUInteger, QMChatConnectionState) {
 - (BFTask *)allDialogsWithPageLimit:(NSUInteger)limit
                     extendedRequest:(nullable NSDictionary *)extendedRequest
                      iterationBlock:(nullable void(^)(QBResponse *response, NSArray<QBChatDialog *> * _Nullable dialogObjects, NSSet<NSNumber *> * _Nullable dialogsUsersIDs, BOOL *stop))iterationBlock;
+/**
+ *  Retrieve chat dialogs using Bolts without appling pagination.
+ *
+ *  @param extendedRequest Set of request parameters. http://quickblox.com/developers/SimpleSample-chat_users-ios#Filters
+ *  @param iterationBlock  block with dialog pagination
+ *
+ *  @return BFTask with failure error
+ *
+ *  @see In order to know how to work with BFTask's see documentation https://github.com/BoltsFramework/Bolts-iOS#bolts
+ */
+- (BFTask *)allDialogsWithExtendedRequest:(nullable NSDictionary *)extendedRequest
+                           iterationBlock:(void(^)(QBResponse *response, NSArray *dialogObjects, NSSet *dialogsUsersIDs, BOOL *stop))iterationBlock;
 
 /**
  *  Create private dialog with user if needed using Bolts.
@@ -669,6 +707,17 @@ typedef NS_ENUM(NSUInteger, QMChatConnectionState) {
  *  @see In order to know how to work with BFTask's see documentation https://github.com/BoltsFramework/Bolts-iOS#bolts
  */
 - (BFTask <NSArray<QBChatMessage *> *> *)messagesWithChatDialogID:(NSString *)chatDialogID;
+
+/**
+ *  Fetch all messages with chat dialog id using Bolts.
+ *
+ *  @param chatDialogID chat dialog identifier to fetch messages from
+ *
+ *  @return BFTask with NSArray of QBChatMessage instances
+ *
+ *  @see In order to know how to work with BFTask's see documentation https://github.com/BoltsFramework/Bolts-iOS#bolts
+ */
+- (BFTask *)allMessagesWithChatDialogID:(NSString *)chatDialogID;
 
 /**
  *  Fetch messages with chat dialog id using Bolts.

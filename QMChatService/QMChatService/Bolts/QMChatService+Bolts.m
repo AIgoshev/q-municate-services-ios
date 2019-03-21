@@ -154,6 +154,26 @@ static NSString *const kQMChatServiceDomain = @"com.q-municate.chatservice";
     return source.task;
 }
 
+- (BFTask *)allDialogsWithExtendedRequest:(nullable NSDictionary *)extendedRequest
+                     iterationBlock:(void(^)(QBResponse *response, NSArray *dialogObjects, NSSet *dialogsUsersIDs, BOOL *stop))iterationBlock {
+    
+    BFTaskCompletionSource* source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self allDialogsWithExtendedRequest: extendedRequest iterationBlock: iterationBlock completion:^(QBResponse *response) {
+        
+        if (response.success) {
+            
+            [source setResult:nil];
+        }
+        else {
+            
+            [source setError:response.error.error];
+        }
+    }];
+    
+    return source.task;
+}
+
 #pragma mark Chat dialog creation
 
 - (BFTask *)createPrivateChatDialogWithOpponent:(QBUUser *)opponent {
@@ -295,6 +315,26 @@ static NSString *const kQMChatServiceDomain = @"com.q-municate.chatservice";
         }
         else {
             
+            [source setError:response.error.error];
+        }
+    }];
+    
+    return source.task;
+}
+
+- (BFTask *)allMessagesWithChatDialogID:(NSString *)chatDialogID {
+    
+    BFTaskCompletionSource *source = [BFTaskCompletionSource taskCompletionSource];
+    
+    [self messagesWithChatDialogID: chatDialogID
+                   extendedRequest: nil
+                   applyPagination: false
+                    iterationBlock: nil
+                        completion: ^(QBResponse *response, NSArray *messages) {
+        
+        if (response.success) {
+            [source setResult: messages];
+        } else {
             [source setError:response.error.error];
         }
     }];

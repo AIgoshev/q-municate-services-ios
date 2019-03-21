@@ -737,6 +737,94 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     request([QBResponsePage responsePageWithLimit:limit]);
 }
 
+- (void)allDialogsWithExtendedRequest:(NSDictionary *)extendedRequest
+                 iterationBlock:(void(^)(QBResponse *response, NSArray<QBChatDialog *>  *dialogObjects, NSSet<NSNumber *>  *dialogsUsersIDs, BOOL *stop))iterationBlock
+                     completion:(void(^)(QBResponse *response))completion {
+    
+    __weak __typeof(self)weakSelf = self;
+    __block void(^t_request)();
+    void(^request)() = ^() {
+        
+        __typeof(weakSelf)strongSelf = weakSelf;
+        
+        if (![strongSelf.serviceManager isAuthorized]) {
+            if (completion) {
+                completion(nil);
+            }
+            return;
+        }
+        
+        [QBRequest dialogsForPage: nil
+                  extendedRequest:extendedRequest
+                     successBlock:^(QBResponse *response, NSArray *dialogs, NSSet *dialogsUsersIDs, QBResponsePage *page)
+         {
+             
+             NSArray *memoryStorageDialogs = [strongSelf.dialogsMemoryStorage unsortedDialogs];
+             NSMutableArray *newDialogs = [dialogs mutableCopy];
+             NSMutableArray *existentDialogs = [dialogs mutableCopy];
+             
+             [newDialogs removeObjectsInArray:memoryStorageDialogs];
+             [existentDialogs removeObjectsInArray:newDialogs];
+             
+             [strongSelf.dialogsMemoryStorage addChatDialogs:dialogs andJoin:strongSelf.isAutoJoinEnabled];
+             
+             if (newDialogs.count > 0) {
+                 
+                 if ([strongSelf.multicastDelegate respondsToSelector:@selector(chatService:didAddChatDialogsToMemoryStorage:)]) {
+                     [strongSelf.multicastDelegate chatService:strongSelf didAddChatDialogsToMemoryStorage:[newDialogs copy]];
+                 }
+             }
+             
+             if (existentDialogs.count > 0) {
+                 
+                 if ([strongSelf.multicastDelegate respondsToSelector:@selector(chatService:didUpdateChatDialogsInMemoryStorage:)]) {
+                     [strongSelf.multicastDelegate chatService:strongSelf didUpdateChatDialogsInMemoryStorage:[existentDialogs copy]];
+                 }
+             }
+             
+             BOOL cancel = NO;
+             page.skip += dialogs.count;
+             
+             if (page.totalEntries <= page.skip) {
+                 
+                 cancel = YES;
+             }
+             
+             if (iterationBlock != nil) {
+                 
+                 iterationBlock(response, dialogs, dialogsUsersIDs, &cancel);
+             }
+             
+             if (!cancel) {
+                 
+                 t_request(page);
+             }
+             else {
+                 
+                 if (completion) {
+                     completion(response);
+                 }
+                 
+                 t_request = nil;
+             }
+             
+         } errorBlock:^(QBResponse *response) {
+             
+             [strongSelf.serviceManager handleErrorResponse:response];
+             
+             if (completion) {
+                 
+                 completion(response);
+             }
+             
+             t_request = nil;
+         }];
+    };
+    
+    t_request = [request copy];
+    request();
+}
+
 #pragma mark - Chat dialog creation
 
 - (void)createPrivateChatDialogWithOpponentID:(NSUInteger)opponentID
@@ -992,6 +1080,19 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
                   iterationBlock:(void (^)(QBResponse *response, NSArray *messages, BOOL *stop))iterationBlock
                       completion:(void (^)(QBResponse *response, NSArray<QBChatMessage *>  *messages))completion {
     
+    [self messagesWithChatDialogID: chatDialogID
+                   extendedRequest: extendedParameters
+                   applyPagination: true
+                    iterationBlock: iterationBlock
+                        completion: completion];
+}
+
+- (void)messagesWithChatDialogID:(NSString *)chatDialogID
+                 extendedRequest:(NSDictionary *)extendedParameters
+                   applyPagination:(BOOL) applyPagination
+                  iterationBlock:(void (^)(QBResponse *response, NSArray *messages, BOOL *stop))iterationBlock
+                      completion:(void (^)(QBResponse *response, NSArray<QBChatMessage *>  *messages))completion {
+    
     dispatch_group_t messagesLoadGroup = dispatch_group_create();
     
     if ([[self.messagesMemoryStorage messagesWithDialogID: chatDialogID] count] == 0) {
@@ -1002,7 +1103,7 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
             dispatch_group_leave(messagesLoadGroup);
         }];
     } else if (self.useCache == true) {
-
+        
         NSArray<QBChatMessage *> *messages = [self.messagesMemoryStorage messagesWithDialogID: chatDialogID];
         
         dispatch_group_enter(messagesLoadGroup);
@@ -1015,10 +1116,19 @@ static NSString* const kQMChatServiceDomain = @"com.q-municate.chatservice";
     dispatch_group_notify(messagesLoadGroup, dispatch_get_main_queue(), ^{
         __typeof(weakSelf)strongSelf = weakSelf;
         
-        QBResponsePage *page = [QBResponsePage responsePageWithLimit:strongSelf.chatMessagesPerPage];
+        QBResponsePage *page;
+        if (applyPagination) {
+            page = [QBResponsePage responsePageWithLimit: strongSelf.chatMessagesPerPage];
+        }
+        
         NSMutableArray *allMessages = [[NSMutableArray alloc] init];
         
-        NSDictionary *extendedRequest = extendedParameters.count > 0 ? extendedParameters : [strongSelf parametersForMessagesUsingDialogID:chatDialogID];
+        NSDictionary *extendedRequest;
+        if(extendedParameters.count > 0) {
+            extendedRequest = extendedParameters;
+        } else {
+            extendedRequest = [strongSelf parametersForMessagesUsingDialogID: chatDialogID];
+        }
         
         __block void(^t_request)(QBResponsePage *responsePage, NSDictionary *parameters);
         void(^request)(QBResponsePage *responsePage, NSDictionary *parameters) = ^(QBResponsePage *responsePage, NSDictionary *parameters) {
