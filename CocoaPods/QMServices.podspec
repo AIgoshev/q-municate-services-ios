@@ -37,5 +37,5 @@ Pod::Spec.new do |s|
         }
 
     s.dependency "QuickBlox", ">= 2.15"
-    s.dependency "Bolts",  '>= 1.9.0'
+    s.dependency "Bolts/Tasks",  '>= 1.9.0'
 end
